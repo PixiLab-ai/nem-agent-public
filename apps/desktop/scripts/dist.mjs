@@ -45,10 +45,17 @@ for (const a of arches) {
 
 execFileSync('node', ['scripts/build.mjs'], { cwd: root, stdio: 'inherit' })
 const publish = process.argv.includes('--publish') ? 'always' : 'never'
+// CI passes every signing secret as an environment variable, so a missing one arrives as an empty
+// string — and electron-builder reads CSC_LINK="" as a certificate path (it failed with "…/apps/desktop
+// not a file"). An empty value means "not set": drop it, and an unsigned build goes through.
+const env = { ...process.env, ...caches }
+for (const k of ['CSC_LINK', 'CSC_KEY_PASSWORD', 'CSC_NAME', 'WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER']) {
+  if (env[k] === '') delete env[k]
+}
 // electron-builder's CLI through node itself: its .bin shim is a .cmd on Windows, which Node
 // doesn't start without a shell
 execFileSync(process.execPath, [resolve(root, 'node_modules', 'electron-builder', 'cli.js'), `--${os}`, ...arches.map(a => `--${a}`), '--config', 'electron-builder.yml', '--publish', publish], {
   cwd: root,
   stdio: 'inherit',
-  env: { ...process.env, ...caches },
+  env,
 })
