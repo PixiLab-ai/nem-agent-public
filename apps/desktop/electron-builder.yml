@@ -31,6 +31,10 @@ publish:
   owner: PixiLab-ai
   repo: nem-agent-public
   releaseType: draft
+# A prerelease version (0.1.0-alpha.1) publishes on its own channel (alpha*.yml); installed alphas
+# follow that channel. A stable release also writes the alpha and beta files, so testers move up
+# to it on their own.
+generateUpdatesFilesForAllChannels: true
 # Electron fuses, flipped in the shipped binary: it can't be run as a plain Node runtime
 # (ELECTRON_RUN_AS_NODE, NODE_OPTIONS, --inspect), it loads only its own app.asar, and the profile's
 # cookies are encrypted. The window it drives carries the key, so the binary must not be reusable

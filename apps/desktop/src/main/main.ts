@@ -1,5 +1,5 @@
 // Nemini on the desktop: the web app in its own window, her pet on the screen, nemd underneath.
-// The app signs in with a key only (made on the website, Settings → Keys; pasted in the pair
+// The app signs in with a key only (made on the website, Settings → App; pasted in the pair
 // window): nemd keeps it in the OS keychain and uses it for the pet and her socket, and the main
 // window's API calls carry it too. No login, no cookie, no OAuth inside the app.
 //
@@ -234,7 +234,7 @@ async function unpair() {
     message: t('dialog.unpaired'),
     detail: t('dialog.unpaired_detail'),
   })
-  if (after.response === 0) void shell.openExternal(`${base()}/me/settings/keys`)
+  if (after.response === 0) void shell.openExternal(`${base()}/me/settings/app`)
 }
 
 // --- nemd ------------------------------------------------------------------------------------

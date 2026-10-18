@@ -1,5 +1,5 @@
 // "Pair with a key": the one way this computer signs in. The human makes a key on the website
-// (Settings → Keys), pastes it here; nemd checks it against the site before keeping it in the OS
+// (Settings → App), pastes it here; nemd checks it against the site before keeping it in the OS
 // keychain, and the app's window is signed in with it from then on. No login, no cookie, no
 // OAuth inside the app.
 import { BrowserWindow, ipcMain, shell } from 'electron'
@@ -62,7 +62,7 @@ export function openPairWindow(o: PairWindowOptions): BrowserWindow {
     return r
   }
   const onKeysPage = (e: Electron.IpcMainEvent) => {
-    if (mine(e)) void shell.openExternal(`${o.base}/me/settings/keys`)
+    if (mine(e)) void shell.openExternal(`${o.base}/me/settings/app`)
   }
   ipcMain.handle('pair:submit', onSubmit)
   ipcMain.on('pair:keys-page', onKeysPage)

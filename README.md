@@ -37,7 +37,7 @@ version: [CHANGELOG.md](CHANGELOG.md).
 
 The app signs in with a key, and only a key: no password, no login page inside the app.
 
-1. On the Nemini website, open **Settings → Keys** and create a key.
+1. On the Nemini website, open **Settings → App** and create a key.
 2. In the app, paste it in **Pair with a key** (it opens by itself the first time, and lives in
    the tray menu).
 

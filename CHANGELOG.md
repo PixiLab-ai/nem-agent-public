@@ -2,9 +2,9 @@
 
 All notable changes to the Nemini desktop app. Versions follow [semver](https://semver.org).
 
-## Unreleased
+## 0.1.0-alpha.1 — 2026-10-19
 
-The first preview.
+The first preview (alpha): expect rough edges; builds are unsigned.
 
 - **The Nemini web app in its own window**, signed in with a key made on the website (Settings →
   Keys) and pasted in the app — no password, no login page. The parts that need a browser
