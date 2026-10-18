@@ -1,0 +1,18 @@
+:root { color-scheme: dark; --ink: #f4f1fb; --ink-2: #b8b0d6; --paper: #1a1626; --paper-2: #241f35; --line: #3a3352; --accent: #9b6cf2; --bad: #ff8f8f; --good: #6fe5a3; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { padding: 22px 24px; }
+h1 { margin: 0 0 8px; font-size: 19px; font-weight: 650; }
+p { margin: 0 0 12px; color: var(--ink-2); }
+b { color: var(--ink); font-weight: 600; }
+form { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; margin: 16px 0 10px; }
+label { grid-column: 1 / -1; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+input { min-width: 0; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper-2); color: var(--ink); font: 13px ui-monospace, "JetBrains Mono", monospace; }
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+button { padding: 9px 16px; border-radius: 9px; border: 0; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+button:disabled { opacity: .55; cursor: default; }
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); font-weight: 500; }
+#msg { min-height: 21px; }
+#msg.bad { color: var(--bad); }
+#msg.good { color: var(--good); }
+.site { margin-top: 8px; font-size: 12px; }

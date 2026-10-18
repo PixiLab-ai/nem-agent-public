@@ -1,0 +1,14 @@
+{
+  "name": "nem-agent",
+  "private": true,
+  "description": "Nemini on the desktop: the app shell, its daemon and the pet.",
+  "packageManager": "pnpm@10.34.4",
+  "scripts": {
+    "daemon": "cd daemon && go build -o bin/nemd ./cmd/nemd",
+    "daemon:test": "cd daemon && go test -race ./...",
+    "build": "pnpm daemon && pnpm --filter @nem-agent/desktop build",
+    "start": "pnpm daemon && pnpm --filter @nem-agent/desktop start",
+    "demo": "pnpm --filter @nem-agent/desktop demo",
+    "typecheck": "pnpm --filter @nem-agent/desktop typecheck"
+  }
+}

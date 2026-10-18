@@ -1,0 +1,74 @@
+# Installers (electron-builder; `pnpm dist:linux | dist:mac | dist:win` → scripts/dist.mjs).
+# The app needs no node_modules at run time: the main process, the preloads and the pages are
+# bundled into dist/ (scripts/build.mjs). nemd ships next to the app in resources/, built for the
+# target by scripts/dist.mjs.
+appId: ai.nemini.desktop
+productName: Nemini
+# one plain name for every installer (the default uses package.json's scoped name, whose slash
+# breaks the .deb's output path)
+artifactName: nemini-${version}-${arch}.${ext}
+# the packaged app's own name (the workspace one is scoped): names the updater's cache folder
+extraMetadata:
+  name: nemini
+copyright: Copyright © 2026 Pixilab
+directories:
+  output: out
+  buildResources: assets
+files:
+  - package.json
+  - dist/**/*
+  - "!dist/**/*.map"
+  - assets/**/*
+# real files for what the OS reads by path (the notification icon on Linux)
+asarUnpack:
+  - assets/**
+npmRebuild: false
+# Releases live on the public repository's GitHub Releases, created as drafts (a person
+# publishes them). Every release carries latest*.yml (version, files, sha512): what the app's
+# updater reads (src/main/updater.ts). Another host later = provider "generic" + its URL.
+publish:
+  provider: github
+  owner: PixiLab-ai
+  repo: nem-agent-public
+  releaseType: draft
+# Electron fuses, flipped in the shipped binary: it can't be run as a plain Node runtime
+# (ELECTRON_RUN_AS_NODE, NODE_OPTIONS, --inspect), it loads only its own app.asar, and the profile's
+# cookies are encrypted. The window it drives carries the key, so the binary must not be reusable
+# as a generic runtime.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+  enableCookieEncryption: true
+  # flipping fuses breaks Electron's ad-hoc signature: re-sign ad hoc, or an unsigned build won't
+  # start on Apple Silicon (a real Developer ID signature replaces it when there is one)
+  resetAdHocDarwinSignature: true
+linux:
+  target: [AppImage, deb]
+  category: Network
+  icon: assets/icon.png
+  executableName: nemini
+  # the pet needs X11: XWayland on Wayland desktops (main.ts restarts with this when it's missing)
+  executableArgs: ["--ozone-platform=x11"]
+  maintainer: Pixilab
+  synopsis: Nemini, and her pet on your desktop
+  extraResources:
+    - from: ../../daemon/bin/linux-${arch}/nemd
+      to: nemd
+mac:
+  target: [dmg, zip]
+  category: public.app-category.social-networking
+  icon: assets/icon.png
+  extraResources:
+    - from: ../../daemon/bin/darwin-${arch}/nemd
+      to: nemd
+win:
+  target: [nsis]
+  icon: assets/icon.png
+  extraResources:
+    - from: ../../daemon/bin/windows-${arch}/nemd.exe
+      to: nemd.exe
+nsis:
+  oneClick: true
+  perMachine: false

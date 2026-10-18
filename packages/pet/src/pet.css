@@ -1,0 +1,55 @@
+/* The pet on the desktop. Every motion is a CSS animation (compositor-only transforms and
+   opacity), so an idle pet costs no CPU. Timings follow the Nemini web client's me.css. */
+.np, .np-card { --ink: #1a1626; --paper: #fffaf5; --spring: cubic-bezier(.34, 1.56, .64, 1); }
+.np { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.np-wrap { position: relative; }
+.np-btn { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: none; cursor: grab; transition: transform .15s var(--spring); }
+.np-btn:active { cursor: grabbing; }
+.np-btn:focus-visible { outline: 2px solid #9b6cf2; outline-offset: 3px; border-radius: 8px; }
+.np-btn svg { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 2px 0 rgba(26, 22, 38, .22)); }
+.np.happy .np-btn { animation: np-hop .6s var(--spring); }
+@keyframes np-hop { 0% { transform: none } 35% { transform: translateY(-7px) scale(1.06, .94) } 70% { transform: translateY(0) scale(.96, 1.05) } 100% { transform: none } }
+.np.hatching .np-btn { animation: np-egg 2.2s ease-in-out; }
+@keyframes np-egg { 0%, 100% { transform: none } 10% { transform: rotate(-8deg) } 20% { transform: rotate(8deg) } 30% { transform: rotate(-10deg) } 40% { transform: rotate(10deg) } 52% { transform: rotate(-6deg) scale(1.05) } 64% { transform: rotate(6deg) scale(1.08) } 78% { transform: scale(1.18) } 90% { transform: scale(.97) } }
+.np-heart { position: absolute; left: 50%; top: 30%; color: #ff5c7c; font-size: 18px; line-height: 1; pointer-events: none; opacity: 0; transform: translate(var(--dx), 0); animation: np-heart 1.4s ease-out forwards; animation-delay: var(--d); }
+@keyframes np-heart { 0% { opacity: 0; transform: translate(var(--dx), 0) scale(.6) } 15% { opacity: 1 } 100% { opacity: 0; transform: translate(calc(var(--dx) * 1.6), -44px) scale(1.1) } }
+.np-bubble { position: relative; max-width: 220px; padding: 7px 11px; border-radius: 13px; cursor: default; background: var(--paper); border: 1px solid rgba(26, 22, 38, .14); box-shadow: 0 2px 8px rgba(26, 22, 38, .18); font: 13px/1.32 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); overflow-wrap: anywhere; }
+/* the tail, pointing down at the pet */
+.np-bubble::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; background: var(--paper); border-right: 1px solid rgba(26, 22, 38, .14); border-bottom: 1px solid rgba(26, 22, 38, .14); transform: translateX(-50%) rotate(45deg); }
+.np-bubble-enter-active, .np-bubble-leave-active { transition: opacity .25s, transform .25s var(--spring); }
+.np-bubble-enter-from, .np-bubble-leave-to { opacity: 0; transform: translateY(5px) scale(.96); }
+.np-badge { position: absolute; right: -6px; top: -6px; min-width: 20px; height: 20px; padding: 0 5px; display: grid; place-items: center; border-radius: 10px; background: var(--paper); border: 1px solid rgba(26, 22, 38, .14); font: 600 12px/1 system-ui, sans-serif; color: #6a44b8; pointer-events: none; }
+.np-dots { display: flex; gap: 3px; align-items: center; }
+.np-dots i { width: 4px; height: 4px; border-radius: 50%; background: #9b6cf2; animation: np-dot 1.2s ease-in-out infinite; }
+.np-dots i:nth-child(2) { animation-delay: .15s; }
+.np-dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes np-dot { 0%, 60%, 100% { opacity: .3; transform: none } 30% { opacity: 1; transform: translateY(-2px) } }
+/* rarity halos (the web's, without its theme variables) */
+.np.r-uncommon .np-btn svg { filter: drop-shadow(0 0 3px rgba(155, 108, 242, .6)); }
+.np.r-rare .np-btn svg { filter: drop-shadow(0 0 3px #5cd7ff) drop-shadow(0 0 9px #5cd7ff66); }
+.np.r-epic .np-btn svg { filter: drop-shadow(0 0 3px #ffd75c) drop-shadow(0 0 11px #ffd75c77); }
+.np.r-legendary .np-btn::before { content: ""; position: absolute; inset: 8%; border-radius: 50%; background: conic-gradient(#ff5c7c, #ffd75c, #6fe5a3, #5cd7ff, #b85cff, #ff5c7c); filter: blur(9px); opacity: .6; animation: np-spin 5s linear infinite; }
+.np.r-legendary .np-btn svg { position: relative; }
+@keyframes np-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .np.happy .np-btn, .np.hatching .np-btn, .np-dots i, .np.r-legendary .np-btn::before { animation: none; }
+  .np-heart { animation-duration: .01s; }
+}
+/* the card (a right-click on the pet) */
+.np-card { width: 228px; padding: 10px 12px; border-radius: 13px; background: var(--paper); border: 1px solid rgba(26, 22, 38, .14); box-shadow: 0 2px 10px rgba(26, 22, 38, .22); color: var(--ink); font: 12px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; cursor: default; }
+.np-card-top { display: flex; align-items: center; gap: 9px; }
+.np-card-sprite { width: 40px; height: 40px; image-rendering: pixelated; flex: none; }
+.np-card-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.np-card-id b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.np-chip { align-self: flex-start; padding: 1px 7px; border-radius: 9px; font-size: 11px; background: #ecebf2; color: #55586e; }
+.np-chip.r-uncommon { background: #e3f6e6; color: #2f7d43; }
+.np-chip.r-rare { background: #dff6ff; color: #1f6f8c; }
+.np-chip.r-epic { background: #fff5d6; color: #8a6a10; }
+.np-chip.r-legendary { background: linear-gradient(90deg, #ffe1e8, #fff5d6, #e3f6e6, #dff6ff, #f0e3ff); color: #6a44b8; }
+.np-card-x { align-self: flex-start; border: 0; background: none; color: #8b8fa8; font-size: 18px; line-height: 1; padding: 0 2px; cursor: pointer; }
+.np-stats { list-style: none; margin: 9px 0 6px; padding: 0; display: grid; gap: 4px; }
+.np-stats li { display: grid; grid-template-columns: 62px 1fr 16px; align-items: center; gap: 6px; color: #55586e; }
+.np-stats i { height: 6px; border-radius: 3px; background: #ecebf2; overflow: hidden; }
+.np-stats i b { display: block; height: 100%; border-radius: 3px; background: #9b6cf2; }
+.np-num { text-align: right; font-variant-numeric: tabular-nums; }
+.np-card-foot { margin: 0; color: #8b8fa8; font-size: 11px; }

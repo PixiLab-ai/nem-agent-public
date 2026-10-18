@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Only these may run install scripts: Electron fetches its binary, esbuild its native build.
+onlyBuiltDependencies:
+  - electron
+  - esbuild

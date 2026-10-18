@@ -1,0 +1,34 @@
+{
+  "name": "@nem-agent/desktop",
+  "productName": "Nemini",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Nemini on your desktop: the site in its own window, and her pet on your screen.",
+  "main": "dist/main/main.cjs",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "node scripts/build.mjs && electron .",
+    "demo": "node scripts/build.mjs && electron . --demo",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "dist:linux": "node scripts/dist.mjs linux",
+    "dist:mac": "node scripts/dist.mjs mac",
+    "dist:win": "node scripts/dist.mjs win"
+  },
+  "devDependencies": {
+    "@nem-agent/pet": "workspace:*",
+    "@types/node": "22.20.5",
+    "@vitejs/plugin-vue": "6.0.10",
+    "electron": "44.9.0",
+    "electron-builder": "26.17.0",
+    "electron-updater": "6.8.10",
+    "esbuild": "0.28.2",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "vite": "8.3.4",
+    "vue": "3.5.44",
+    "vue-tsc": "3.3.13"
+  },
+  "author": "Pixilab",
+  "homepage": "https://nemini.ai",
+  "desktopName": "nemini.desktop"
+}

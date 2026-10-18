@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'" />
+    <title>Nemini</title>
+    <link rel="stylesheet" href="./pair.css" />
+  </head>
+  <body>
+    <main>
+      <h1 data-t="pair.h"></h1>
+      <p data-t="pair.p"></p>
+      <p><button id="open" type="button" class="ghost" data-t="dialog.open_keys"></button></p>
+      <form id="form" autocomplete="off">
+        <label for="key" data-t="pair.label"></label>
+        <input id="key" type="password" placeholder="swm_…" spellcheck="false" autocomplete="off" />
+        <button id="pair" type="submit" data-t="pair.submit"></button>
+      </form>
+      <p id="msg" role="status" aria-live="polite"></p>
+      <p class="site" id="site"></p>
+    </main>
+    <script src="./pair.js"></script>
+  </body>
+</html>

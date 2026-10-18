@@ -1,0 +1,11 @@
+# Internal research and planning (private). The public docs will live elsewhere.
+_docs/
+
+node_modules/
+dist/
+out/
+daemon/bin/
+*.log
+.DS_Store
+dev.sh
+local.env

@@ -1,0 +1,16 @@
+{
+  "name": "@nem-agent/pet",
+  "version": "0.0.1",
+  "private": true,
+  "description": "The Nemini pet: sprites, state and the Vue component the desktop overlay renders.",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sprites": "./src/petSprites.ts",
+    "./pet.css": "./src/pet.css"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  }
+}
