@@ -64,6 +64,16 @@ func Dir() (string, error) {
 	return filepath.Join(d, "nem-agent"), nil
 }
 
+// StateFile is a file of nemd's own state in its config directory (the folder sync's agreed
+// state, its local trash): name + ext, apart per profile like the config itself.
+func StateFile(name, ext string) (string, error) {
+	d, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(d, suffixed(name, ext)), nil
+}
+
 func file() (string, error) {
 	d, err := Dir()
 	if err != nil {

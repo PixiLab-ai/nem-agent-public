@@ -22,6 +22,20 @@ export interface NemdStatus {
   /** the folder that holds a companion's desktop on this computer, and that companion (nemd's desksync) */
   desk_root?: string
   desk_companion?: string
+  /** what the folder sync is doing (nemd's desksync.Status) */
+  desk?: DeskSyncStatus
+}
+
+export interface DeskSyncStatus {
+  /** starting · downloading · up_to_date · syncing · waiting · paused · error · stopped */
+  state: string
+  done?: number
+  total?: number
+  /** waiting: the question (mass_delete); paused, error, stopped: why */
+  detail?: string
+  /** waiting on mass_delete: how many files */
+  count?: number
+  last_sync?: string
 }
 
 export interface Companion { uuid: string, name: string }

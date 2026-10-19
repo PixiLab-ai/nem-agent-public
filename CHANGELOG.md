@@ -7,9 +7,13 @@ All notable changes to the Nemini desktop app. Versions follow [semver](https://
 - **The app's own settings window** (tray → Settings…, Ctrl+, — Cmd+, on macOS — or the website's
   Settings → App inside the app): the pet and start at login on this computer, signing this
   computer out, the version and a check for updates.
-- **Your companion's desktop as a folder on this computer — the first step:** choose or create an
-  empty folder for it in the settings (a folder with files in it, a whole drive or your home folder
-  itself is refused). Syncing itself comes next.
+- **Your companion's desktop as a folder on this computer:** choose or create an empty folder in
+  the settings, and the app downloads their desktop into it, then keeps both in step. What changes
+  on their side shows up in the folder within seconds while you're at the computer; what you add,
+  edit, rename or delete in the folder goes to their desktop. Their own files (personality,
+  avatar…) come down but stay theirs: a change made to one in the folder is undone. When both
+  sides changed the same file, both versions are kept. Many files deleted at once wait for your
+  yes; files they delete land in a local trash first.
 - Development runs keep their own settings, apart from the installed app.
 
 ## 0.1.0-alpha.1 — 2026-10-19

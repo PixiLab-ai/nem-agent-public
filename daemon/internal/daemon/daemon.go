@@ -13,6 +13,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -69,6 +71,12 @@ type Daemon struct {
 	sockSt   chat.State
 	sockWhy  string
 	root     context.Context
+
+	// her desktop's folder (package desksync): the running engine, what it was started for, its news
+	desk       *desksync.Engine
+	deskCancel context.CancelFunc
+	deskID     string
+	deskSt     *desksync.Status
 }
 
 // New builds a daemon. Run must be called before requests are served.
@@ -137,8 +145,102 @@ func (d *Daemon) client() (*api.Client, *config.Config, error) {
 	return d.newClient(cfg.Base, k, d.ua()), &cfg, nil
 }
 
-// reconcile opens or closes the chat socket to match paired × companion × presence.
+// reconcile brings the chat socket and the folder sync in line with the state.
 func (d *Daemon) reconcile() {
+	d.reconcileSocket()
+	d.reconcileDesk()
+}
+
+// reconcileDesk runs her desktop's folder sync while a folder is set and the computer is paired
+// with the site it was set on; anything else stops it (its files stay).
+func (d *Daemon) reconcileDesk() {
+	d.mu.Lock()
+	if d.root == nil {
+		d.mu.Unlock()
+		return
+	}
+	cfg := *d.cfg
+	d.mu.Unlock()
+	k, _ := d.key(cfg.Base)
+	want := cfg.DeskRoot != "" && cfg.DeskCompanion != "" && k != ""
+	id := cfg.DeskRoot + "|" + cfg.DeskCompanion + "|" + cfg.Base + "|" + k
+	d.mu.Lock()
+	if want && d.deskID == id {
+		d.mu.Unlock()
+		return
+	}
+	if d.deskCancel != nil {
+		d.deskCancel()
+	}
+	d.desk, d.deskCancel, d.deskID, d.deskSt = nil, nil, "", nil
+	root := d.root
+	d.mu.Unlock()
+	if !want {
+		return
+	}
+	stateFile, err := config.StateFile("desk-"+cfg.DeskCompanion, ".json")
+	if err != nil {
+		d.setDeskStatus(desksync.Status{State: "error", Detail: "config_dir"})
+		return
+	}
+	trash, _ := config.StateFile("desk-trash-"+cfg.DeskCompanion, "")
+	desksync.PruneTrash(trash, 30*24*time.Hour)
+	st, err := desksync.LoadState(stateFile, cfg.DeskCompanion, cfg.DeskRoot)
+	if err != nil {
+		d.setDeskStatus(desksync.Status{State: "error", Detail: "state_unreadable"})
+		return
+	}
+	dl := &http.Client{Timeout: 10 * time.Minute}
+	ua := d.ua()
+	eng := desksync.New(desksync.Options{
+		Root: cfg.DeskRoot, Companion: cfg.DeskCompanion, Device: cfg.Device,
+		Remote: d.newClient(cfg.Base, k, ua),
+		Fetch: func(ctx context.Context, url string, max int64, into *os.File) (string, int64, error) {
+			return api.Download(ctx, dl, url, ua, max, into)
+		},
+		State: st, Trash: trash, Report: d.setDeskStatus, Interval: d.deskInterval,
+	})
+	ctx, cancel := context.WithCancel(root)
+	d.mu.Lock()
+	d.desk, d.deskCancel, d.deskID = eng, cancel, id
+	d.mu.Unlock()
+	go eng.Run(ctx)
+}
+
+// deskInterval is the folder sync's pace between passes: brisk while the human is at the
+// computer, calmer otherwise (her changes also come at once through the chat socket's frames).
+func (d *Daemon) deskInterval() time.Duration {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	switch d.presence {
+	case Active:
+		return 15 * time.Second
+	case Idle:
+		return time.Minute
+	}
+	return 2 * time.Minute
+}
+
+// setDeskStatus keeps the folder sync's news and tells the shell.
+func (d *Daemon) setDeskStatus(st desksync.Status) {
+	d.mu.Lock()
+	d.deskSt = &st
+	d.mu.Unlock()
+	d.emit("status", d.status())
+}
+
+// pokeDesk asks the folder sync for a pass now.
+func (d *Daemon) pokeDesk() {
+	d.mu.Lock()
+	eng := d.desk
+	d.mu.Unlock()
+	if eng != nil {
+		eng.Poke()
+	}
+}
+
+// reconcileSocket opens or closes the chat socket to match paired × companion × presence.
+func (d *Daemon) reconcileSocket() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.root == nil {
@@ -167,8 +269,12 @@ func (d *Daemon) reconcile() {
 		URL:    u,
 		Header: c.Header(),
 		Frame: func(f map[string]any) {
-			if t, _ := f["type"].(string); forwarded[t] {
+			t, _ := f["type"].(string)
+			if forwarded[t] {
 				d.emit("chat", f)
+			}
+			if t == "desktop" {
+				d.pokeDesk()
 			}
 		},
 		State: func(s chat.State, why string) {
@@ -207,8 +313,9 @@ type Status struct {
 	Reason    string `json:"reason,omitempty"`
 	Keychain  string `json:"keychain,omitempty"` // an error reading the OS store, if any
 	// the folder that holds a companion's desk on this computer, and that companion (desksync)
-	DeskRoot      string `json:"desk_root,omitempty"`
-	DeskCompanion string `json:"desk_companion,omitempty"`
+	DeskRoot      string           `json:"desk_root,omitempty"`
+	DeskCompanion string           `json:"desk_companion,omitempty"`
+	Desk          *desksync.Status `json:"desk,omitempty"` // what the folder sync is doing
 }
 
 func (d *Daemon) status() Status {
@@ -217,7 +324,7 @@ func (d *Daemon) status() Status {
 	st := Status{
 		Version: d.version, Base: d.cfg.Base, Device: d.cfg.Device, Companion: d.cfg.Companion,
 		KeyUUID: d.cfg.KeyUUID, Presence: d.presence, Socket: string(d.sockSt), Reason: d.sockWhy,
-		DeskRoot: d.cfg.DeskRoot, DeskCompanion: d.cfg.DeskCompanion,
+		DeskRoot: d.cfg.DeskRoot, DeskCompanion: d.cfg.DeskCompanion, Desk: d.deskSt,
 	}
 	k, err := d.key(d.cfg.Base)
 	if err != nil {
@@ -319,6 +426,9 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		d.mu.Unlock()
 		if changed {
 			d.reconcile()
+			if p.State == Active {
+				d.pokeDesk()
+			}
 		}
 		return d.status(), nil
 
@@ -351,6 +461,7 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		d.mu.Lock()
 		d.cfg.DeskRoot, d.cfg.DeskCompanion = cfg.DeskRoot, cfg.DeskCompanion
 		d.mu.Unlock()
+		d.reconcileDesk()
 		st := d.status()
 		d.emit("status", st)
 		return st, nil
@@ -361,9 +472,28 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		if err := d.forgetDesk(); err != nil {
 			return nil, err
 		}
+		d.reconcileDesk()
 		st := d.status()
 		d.emit("status", st)
 		return st, nil
+
+	case "desk.answer":
+		// many files deleted from the folder at once: yes deletes them on her desk too, no puts
+		// them back in the folder
+		var p struct {
+			Allow bool `json:"allow"`
+		}
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, ipc.Errorf("invalid_params", "desk.answer needs {allow}")
+		}
+		d.mu.Lock()
+		eng := d.desk
+		d.mu.Unlock()
+		if eng == nil {
+			return nil, ipc.Errorf("not_syncing", "no folder is syncing")
+		}
+		eng.Answer(p.Allow)
+		return d.status(), nil
 
 	case "pet.get", "pet.pet":
 		cl, cfg, err := d.client()

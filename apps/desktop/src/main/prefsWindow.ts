@@ -16,8 +16,8 @@ export interface PrefsState {
   pet: boolean
   autostart: boolean
   autostartAvailable: boolean
-  /** her desktop's folder on this computer, and whose desktop it holds */
-  desk: { root: string, name: string } | null
+  /** her desktop's folder on this computer, whose desktop it holds, and what the sync is doing */
+  desk: { root: string, name: string, sync: { state: string, done?: number, total?: number, detail?: string, count?: number } | null } | null
   /** a downloaded version waiting for a restart */
   update: string
   /** packaged builds update themselves; development runs don't */

@@ -140,6 +140,29 @@ function refresh() {
     companions: companions.map(c => ({ ...c, selected: c.uuid === status?.companion })),
   })
   pushPrefs(prefsState())
+  void askMassDelete()
+}
+
+// Many files deleted from her desktop's folder at once: nemd waits for the human's answer.
+let askingMassDelete = false
+async function askMassDelete() {
+  const d = status?.desk
+  if (askingMassDelete || !nemd || d?.state !== 'waiting' || d.detail !== 'mass_delete') return
+  askingMassDelete = true
+  try {
+    const name = companions.find(c => c.uuid === status?.desk_companion)?.name || companionName()
+    const { response } = await dialog.showMessageBox({
+      type: 'warning', title: 'Nemini',
+      buttons: [t('dialog.mass_delete_yes', { name }), t('dialog.mass_delete_no')], defaultId: 1, cancelId: 1,
+      message: t('dialog.mass_delete_q', { count: d.count || 0, name }),
+      detail: t('dialog.mass_delete_detail', { name }),
+    })
+    status = await nemd.call<NemdStatus>('desk.answer', { allow: response === 0 })
+  }
+  catch { /* the sync asks again on its next pass */ }
+  finally {
+    askingMassDelete = false
+  }
 }
 
 // --- the app's own settings (main/prefsWindow.ts) -------------------------------------------
@@ -161,7 +184,7 @@ function prefsState(): PrefsState {
     pet: settings.petVisible,
     autostart: !DEMO && safeAutostartEnabled(),
     autostartAvailable: !DEMO,
-    desk: status?.desk_root ? { root: status.desk_root, name: deskName } : null,
+    desk: status?.desk_root ? { root: status.desk_root, name: deskName, sync: status.desk || null } : null,
     update: updateReady,
     updatable: !!updates,
   }

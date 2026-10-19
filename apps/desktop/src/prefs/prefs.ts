@@ -31,13 +31,28 @@ function folderError(code: string): string {
 
 let state: PrefsState | null = null
 
+/** what the folder sync is doing, in words */
+function syncLine(sync: NonNullable<PrefsState['desk']>['sync']): string {
+  if (!sync) return t('prefs.desk.state.starting')
+  switch (sync.state) {
+    case 'downloading': return t('prefs.desk.state.downloading', { done: sync.done || 0, total: sync.total || 0 })
+    case 'up_to_date': return t('prefs.desk.state.up_to_date')
+    case 'syncing': return t('prefs.desk.state.syncing')
+    case 'waiting': return t('prefs.desk.state.waiting', { count: sync.count || 0 })
+    case 'paused': return t('prefs.desk.state.paused')
+    case 'stopped': return sync.detail === 'companion_gone' ? t('prefs.desk.state.companion_gone') : t('prefs.desk.state.auth_failed')
+    case 'error': return t('prefs.desk.state.error', { detail: sync.detail || '?' })
+  }
+  return t('prefs.desk.state.starting')
+}
+
 function render(s: PrefsState) {
   state = s
   const name = s.desk?.name || s.companion || 'Nemini'
   $('desk-h').textContent = t('prefs.desk.h', { name })
   $('desk-p').textContent = t('prefs.desk.p', { name })
   $('desk-where').textContent = s.desk ? s.desk.root : ''
-  $('desk-state').textContent = s.desk ? t('prefs.desk.ready') : (s.paired && s.companion ? t('prefs.desk.none') : t('prefs.desk.no_companion'))
+  $('desk-state').textContent = s.desk ? syncLine(s.desk.sync) : (s.paired && s.companion ? t('prefs.desk.none') : t('prefs.desk.no_companion'))
   btn('desk-choose').hidden = !!s.desk
   btn('desk-choose').disabled = !s.paired || !s.companion
   btn('desk-open').hidden = !s.desk
