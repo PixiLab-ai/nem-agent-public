@@ -15,6 +15,8 @@ export interface TrayState {
   update?: string
   /** the account's companions, when there's a choice to make */
   companions: { uuid: string, name: string, selected: boolean }[]
+  /** Peek is on (and whether it's paused) */
+  peek?: { paused: boolean }
 }
 
 export interface TrayActions {
@@ -27,6 +29,9 @@ export interface TrayActions {
   unpair: () => void
   select: (uuid: string) => void
   installUpdate: () => void
+  /** Peek: pause for minutes (0 resumes), and the report card in the pet's bubble */
+  peekPause: (minutes: number) => void
+  judge: () => void
   quit: () => void
 }
 
@@ -58,6 +63,14 @@ export class AppTray {
       { label: this.t('tray.settings'), enabled: !s.demo, click: () => this.act.settings() },
       { label: this.t('tray.show_pet'), type: 'checkbox', checked: s.petVisible, click: item => this.act.togglePet(item.checked) },
       { label: this.t('tray.autostart'), type: 'checkbox', checked: s.autostart, enabled: !s.demo, click: item => this.act.toggleAutostart(item.checked) },
+      ...(s.peek
+        ? [
+            { label: this.t('prefs.peek.judge'), click: () => this.act.judge() },
+            s.peek.paused
+              ? { label: this.t('tray.peek_resume'), click: () => this.act.peekPause(0) }
+              : { label: this.t('tray.peek_pause'), click: () => this.act.peekPause(60) },
+          ]
+        : []),
       ...(s.paired && s.companions.length > 1
         ? [{
             label: this.t('tray.companion'),

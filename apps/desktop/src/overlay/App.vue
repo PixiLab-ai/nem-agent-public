@@ -17,6 +17,8 @@ let moodTimer: ReturnType<typeof setTimeout> | null = null
 /** the pet's card (a right-click on the pet), and whose pet it is (her name, from the main process) */
 const card = ref(false)
 const owner = ref('')
+/** Peek is on: the pet shows it's noticing what you're up to (never hidden, never secret) */
+const peeking = ref(false)
 let cardTimer: ReturnType<typeof setTimeout> | null = null
 let dragging = false
 let hovering = false
@@ -139,7 +141,7 @@ function onLeave() {
   window.nem.hover(false)
 }
 
-watch([pet, bubble, thinking, mood, hatching, card, () => hearts.value.length > 0], () => nextTick(reportHits))
+watch([pet, bubble, thinking, mood, hatching, card, peeking, () => hearts.value.length > 0], () => nextTick(reportHits))
 
 onMounted(() => {
   offs.push(window.nem.on('overlay:info', (p) => {
@@ -148,6 +150,7 @@ onMounted(() => {
   }))
   offs.push(window.nem.on('overlay:frame', f => onChat(f as ChatFrame)))
   offs.push(window.nem.on('overlay:say', t => say(String(t))))
+  offs.push(window.nem.on('overlay:peek', p => { peeking.value = !!(p as { on?: boolean }).on }))
   document.addEventListener('transitionend', reportHits)
   document.addEventListener('animationend', reportHits)
   document.addEventListener('mousemove', onMove)
@@ -166,7 +169,10 @@ onBeforeUnmount(() => {
   <div class="stage">
     <div class="column">
       <PetCard v-if="card && pet && !pet.muted" :pet="pet" :owner="owner" :t="t" @close="card = false" />
-      <PetSprite ref="sprite" :scale="4" :thinking="thinking" :mood="mood" :quiet="card" @tap="onTap" @grab="onGrab" @menu="onMenu" />
+      <div class="pet-wrap">
+        <PetSprite ref="sprite" :scale="4" :thinking="thinking" :mood="mood" :quiet="card" @tap="onTap" @grab="onGrab" @menu="onMenu" />
+        <span v-if="peeking && pet && !pet.muted" class="peek-eyes" aria-hidden="true">👀</span>
+      </div>
     </div>
   </div>
 </template>

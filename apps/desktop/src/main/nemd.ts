@@ -24,6 +24,8 @@ export interface NemdStatus {
   desk_companion?: string
   /** what the folder sync is doing (nemd's desksync.Status) */
   desk?: DeskSyncStatus
+  /** Peek: the pet noticing what you're up to (nemd's peek.Status) */
+  peek?: { on: boolean, paused_until?: string, mode?: string }
 }
 
 export interface DeskSyncStatus {

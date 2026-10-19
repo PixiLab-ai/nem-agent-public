@@ -29,6 +29,8 @@ type Config struct {
 	// DeskCompanion that companion: the folder stays bound to her when the tray shows another.
 	DeskRoot      string `json:"desk_root,omitempty"`
 	DeskCompanion string `json:"desk_companion,omitempty"`
+	// Peek: the pet notices what kind of thing the human is doing (package peek). Off by default.
+	Peek bool `json:"peek,omitempty"`
 }
 
 // profile separates a second set of state on the same machine: the development app ("dev") gets

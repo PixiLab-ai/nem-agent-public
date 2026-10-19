@@ -40,6 +40,8 @@ const rarity = computed(() => pet.value?.rarity || 'common')
 const visible = computed(() => !!pet.value && !pet.value.muted && !egg.value)
 const moodIcon = computed(() => ({
   happy: '♪', sad: '…', angry: '!', surprised: '!?', blushing: '♡', smug: '~', thinking: '…', asleep: 'z',
+  // the desktop app's Peek (what the human is up to): hard at work, playing
+  focused: '✎', gaming: '★',
 } as Record<string, string>)[props.mood || ''] || '')
 
 function scheduleBlink() {

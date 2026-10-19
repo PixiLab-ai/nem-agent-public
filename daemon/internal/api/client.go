@@ -89,6 +89,22 @@ func (c *Client) PetPet(ctx context.Context, companion string) (json.RawMessage,
 	return out, err
 }
 
+// PeekAnswer is the site's answer to Peek: said = her pet answered with a line (it also arrives
+// as a `pet` frame on the socket); reason when it didn't: budget · no_pet · muted · quiet · busy ·
+// failed.
+type PeekAnswer struct {
+	Said   bool   `json:"said"`
+	Line   string `json:"line,omitempty"`
+	Reason string `json:"reason,omitempty"`
+}
+
+// PetPeek tells her pet what kind of thing the human is doing (package peek's Report).
+func (c *Client) PetPeek(ctx context.Context, companion string, report any) (PeekAnswer, error) {
+	var out PeekAnswer
+	err := c.do(ctx, http.MethodPost, "/companions/"+url.PathEscape(companion)+"/pet/peek", report, &out)
+	return out, err
+}
+
 // ChatURL is the companion's chat socket, as the web client opens it (`_` carries the time
 // zone so her clock speaks local time).
 func (c *Client) ChatURL(companion, tz string) (string, error) {

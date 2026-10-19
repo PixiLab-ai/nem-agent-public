@@ -1,3 +1,7 @@
 html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; -webkit-user-select: none; }
 .stage { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; box-sizing: border-box; }
 .column { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+/* Peek is on: two small eyes at the pet's side (it never watches in secret) */
+.pet-wrap { position: relative; }
+.peek-eyes { position: absolute; left: -18px; top: 2px; font-size: 14px; line-height: 1; opacity: .9; pointer-events: none; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45)); }

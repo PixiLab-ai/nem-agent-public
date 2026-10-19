@@ -18,3 +18,5 @@ button[hidden] { display: none; }
 .check input { width: 16px; height: 16px; accent-color: var(--accent); }
 .msg.bad { color: var(--bad); }
 .msg.good { color: var(--good); }
+.small { font-size: 12.5px; line-height: 1.45; }
+.small:empty, .state:empty { display: none; }

@@ -3,6 +3,7 @@ import { pickLang, translator } from '../shared/i18n'
 import { STRINGS } from '../shared/strings'
 import type { PrefsApi } from '../preload/prefs'
 import type { PrefsState } from '../main/prefsWindow'
+import { minutesList } from '../shared/peekText'
 
 declare global {
   interface Window { prefs: PrefsApi }
@@ -71,12 +72,55 @@ function render(s: PrefsState) {
   btn('signout').hidden = !s.paired
   btn('pair').hidden = s.paired
 
+  // Peek
+  $<HTMLInputElement>('peek-on').checked = s.peek.on
+  $('peek-mode').textContent = s.peek.on && s.peek.mode === 'running' ? t('prefs.peek.running') : ''
+  btn('peek-judge').hidden = !s.peek.on
+  btn('peek-pause').hidden = !s.peek.on
+  btn('peek-pause').textContent = s.peek.pausedUntil ? t('prefs.peek.resume') : t('prefs.peek.pause')
+  btn('peek-forget').hidden = !s.peek.on
+  void renderPeekToday(s)
+
   $('version').textContent = t('prefs.about.version', { version: s.version })
   btn('updates').hidden = !s.updatable || !!s.update
   btn('install').hidden = !s.update
   if (s.update) say('update-msg', t('prefs.about.ready', { version: s.update }), 'good')
   else if (!s.updatable) say('update-msg', t('prefs.about.no_updates'))
 }
+
+/** today's minutes (or the pause), asked from nemd */
+async function renderPeekToday(s: PrefsState) {
+  if (!s.peek.on) {
+    $('peek-state').textContent = ''
+    return
+  }
+  if (s.peek.pausedUntil) {
+    const time = new Date(s.peek.pausedUntil).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
+    $('peek-state').textContent = t('prefs.peek.paused', { time })
+    return
+  }
+  const today = await window.prefs.peekToday()
+  const items = Object.entries(today).map(([category, minutes]) => ({ category, minutes })).sort((a, b) => b.minutes - a.minutes)
+  const list = minutesList(t, items)
+  $('peek-state').textContent = list ? t('prefs.peek.today', { list }) : t('prefs.peek.today_none')
+}
+
+// today's minutes grow while the window stays open
+setInterval(() => {
+  if (state?.peek.on && !document.hidden) void renderPeekToday(state)
+}, 60_000)
+
+$<HTMLInputElement>('peek-on').addEventListener('change', async (e) => {
+  const r = await window.prefs.setPeek((e.target as HTMLInputElement).checked)
+  say('peek-msg', r.ok ? '' : t('prefs.desk.err.other', { code: r.error || '?' }), r.ok ? '' : 'bad')
+})
+btn('peek-judge').addEventListener('click', () => window.prefs.judge())
+btn('peek-pause').addEventListener('click', () => { void window.prefs.pausePeek(state?.peek.pausedUntil ? 0 : 60) })
+btn('peek-forget').addEventListener('click', async () => {
+  const ok = await window.prefs.forgetPeek()
+  say('peek-msg', ok ? t('prefs.peek.forgot') : '', ok ? 'good' : '')
+  if (state) void renderPeekToday(state)
+})
 
 btn('desk-choose').addEventListener('click', async () => {
   btn('desk-choose').disabled = true

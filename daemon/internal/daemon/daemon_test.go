@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +33,7 @@ type fakeSite struct {
 	sockets int
 	send    chan string // frames to push to the open socket
 	revoke  chan struct{}
+	peeks   []string // Peek's reports, as sent
 }
 
 func (f *fakeSite) handler() http.Handler {
@@ -60,6 +62,20 @@ func (f *fakeSite) handler() http.Handler {
 		}
 		// the FWS envelope some routes are wrapped in
 		_, _ = w.Write([]byte(`{"result":"success","data":{"pet":{"species":"fox"},"line":"hi!"}}`))
+	})
+	mux.HandleFunc("POST "+api.Prefix+"/companions/c-1/pet/peek", func(w http.ResponseWriter, r *http.Request) {
+		if !auth(w, r) {
+			return
+		}
+		raw, _ := io.ReadAll(r.Body)
+		f.mu.Lock()
+		f.peeks = append(f.peeks, string(raw))
+		f.mu.Unlock()
+		if strings.Contains(string(raw), `"asked":true`) {
+			_, _ = w.Write([]byte(`{"said":true,"line":"B minus. Touch grass."}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"said":false}`))
 	})
 	mux.HandleFunc("GET "+api.Prefix+"/companions/c-1/chat/ws", func(w http.ResponseWriter, r *http.Request) {
 		if !auth(w, r) {
@@ -187,6 +203,7 @@ func socketState(state string) func(ipc.Event) bool {
 
 func startDaemon(t *testing.T, site *httptest.Server) (*shell, *Daemon, keychain.Store) {
 	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir()) // the daemon's state files (sync, Peek) stay out of the real config
 	keys := keychain.NewMemory()
 	cfg := &config.Config{Base: site.URL, Device: "test device"}
 	d := New(cfg, "test", keys, nil)
@@ -376,5 +393,65 @@ func TestDeskFolder(t *testing.T) {
 	}
 	if st := d.status(); st.DeskRoot != "" {
 		t.Fatalf("unpair kept the folder: %+v", st)
+	}
+}
+
+// Peek is off until the human turns it on, and the switch is kept.
+func TestPeekSwitch(t *testing.T) {
+	site := &fakeSite{t: t, key: "swm_good", send: make(chan string, 8), revoke: make(chan struct{})}
+	ts := httptest.NewServer(site.handler())
+	defer ts.Close()
+	sh, d, _ := startDaemon(t, ts)
+	if d.status().Peek.On {
+		t.Fatal("Peek is on by default")
+	}
+	if r := sh.call(t, "peek.judge", nil); r.Error == nil || r.Error.Code != "peek_off" {
+		t.Fatalf("judge while off = %+v", r.Error)
+	}
+	if r := sh.call(t, "pair", map[string]string{"token": "swm_good", "key_uuid": "k-1"}); r.Error != nil {
+		t.Fatalf("pair: %v", r.Error)
+	}
+	if r := sh.call(t, "peek.set", map[string]bool{"on": true}); r.Error != nil {
+		t.Fatalf("peek.set: %v", r.Error)
+	}
+	if !d.status().Peek.On || !d.cfg.Peek {
+		t.Fatalf("not on: %+v", d.status().Peek)
+	}
+	if r := sh.call(t, "peek.pause", map[string]int{"minutes": 60}); r.Error != nil || d.status().Peek.PausedUntil == nil {
+		t.Fatalf("pause: %+v", r.Error)
+	}
+	if r := sh.call(t, "peek.card", nil); r.Error != nil {
+		t.Fatalf("card: %v", r.Error)
+	}
+	// "Judge me": her pet answers through the site
+	r := sh.call(t, "peek.judge", nil)
+	if r.Error != nil {
+		t.Fatalf("judge: %v", r.Error)
+	}
+	if got := r.Result.(map[string]any); got["said"] != true || got["line"] != "B minus. Touch grass." || got["card"] == nil {
+		t.Fatalf("judge = %+v", got)
+	}
+	if r := sh.call(t, "peek.set", map[string]bool{"on": false}); r.Error != nil || d.status().Peek.On || d.cfg.Peek {
+		t.Fatalf("off: %+v", d.status().Peek)
+	}
+	// the pause and the switch-off told the pet to forget, in order, after the asked card
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		site.mu.Lock()
+		peeks := append([]string(nil), site.peeks...)
+		site.mu.Unlock()
+		offs := 0
+		for _, p := range peeks {
+			if p == `{"off":true}` {
+				offs++
+			}
+		}
+		if offs == 2 && len(peeks) == 3 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("reports = %q", peeks)
+		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }

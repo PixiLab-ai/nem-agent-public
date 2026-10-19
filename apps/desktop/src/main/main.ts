@@ -22,6 +22,7 @@ import { notifyFrame } from './notify'
 import { Overlay } from './overlay'
 import { openPairWindow } from './pairWindow'
 import { openPrefsWindow, type PrefsState, pushPrefs } from './prefsWindow'
+import { cardLine, type PeekCard, type PeekEvent, peekFace, peekLine } from '../shared/peekText'
 import { type Presence, PresenceWatch } from './presence'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import { AppTray } from './tray'
@@ -84,6 +85,8 @@ let demo: Demo | null = null
 let nemd: Nemd | null = null
 let nemdProblem = ''
 let status: NemdStatus | null = null
+/** refreshes the tray and the settings when Peek's pause ends */
+let peekResumeTimer: ReturnType<typeof setTimeout> | undefined
 let petInfo: PetInfo | null = null
 let companions: Companion[] = []
 let presence: PresenceWatch | null = null
@@ -131,6 +134,9 @@ function petShouldShow(): boolean {
 
 function refresh() {
   overlay?.setVisible(petShouldShow())
+  clearTimeout(peekResumeTimer)
+  const resumeIn = peekPaused() ? new Date(status!.peek!.paused_until!).getTime() - Date.now() + 1000 : 0
+  if (resumeIn > 0) peekResumeTimer = setTimeout(refresh, Math.min(resumeIn, 2 ** 31 - 1))
   tray?.update({
     status: statusLine(),
     paired: !!status?.paired,
@@ -138,7 +144,9 @@ function refresh() {
     autostart: !DEMO && safeAutostartEnabled(),
     update: updateReady || undefined,
     companions: companions.map(c => ({ ...c, selected: c.uuid === status?.companion })),
+    peek: status?.peek?.on ? { paused: peekPaused() } : undefined,
   })
+  overlay?.send('overlay:peek', { on: !!status?.peek?.on && !peekPaused() })
   pushPrefs(prefsState())
   void askMassDelete()
 }
@@ -165,6 +173,53 @@ async function askMassDelete() {
   }
 }
 
+// --- Peek: the pet's word on what you're up to (nemd's peek, off by default) -----------------
+
+function peekPaused(): boolean {
+  const until = status?.peek?.paused_until
+  return !!until && new Date(until).getTime() > Date.now()
+}
+
+/** the pet says it (with a face for a few seconds); with the pet hidden, a notification only when asked for */
+function petSay(line: string, face: string, asked: boolean) {
+  if (!line) return
+  if (overlay && petShouldShow()) {
+    if (face) overlay.send('overlay:frame', { type: 'mood', face })
+    overlay.send('overlay:say', line)
+  }
+  else if (asked && Notification.isSupported()) {
+    new Notification({ title: companionName(), body: line, icon: join(assets, 'icon.png') }).show()
+  }
+}
+
+/** a Peek moment her pet couldn't answer (offline, an older site): the app's own line */
+function onPeek(ev: PeekEvent) {
+  petSay(peekLine(t, ev), peekFace(ev), false)
+}
+
+/** "Judge me": her pet answers in its own voice (the line comes as a pet frame, or as a
+ *  notification with the pet hidden); offline or no line: the app's own report card */
+async function judgeMe() {
+  if (!nemd) return
+  try {
+    const r = await nemd.call<{ said: boolean, line?: string, card: PeekCard }>('peek.judge')
+    if (r.said) {
+      if (!(overlay && petShouldShow()) && r.line) petSay(r.line, '', true)
+      return
+    }
+    petSay(cardLine(t, r.card), 'thinking', true)
+  }
+  catch { /* nemd isn't there, or Peek is off */ }
+}
+
+async function pausePeek(minutes: number) {
+  try {
+    status = await nemd!.call<NemdStatus>('peek.pause', { minutes })
+    refresh()
+  }
+  catch { /* nemd isn't there */ }
+}
+
 // --- the app's own settings (main/prefsWindow.ts) -------------------------------------------
 
 const SOURCE_URL = 'https://github.com/PixiLab-ai/nem-agent-public'
@@ -187,6 +242,7 @@ function prefsState(): PrefsState {
     desk: status?.desk_root ? { root: status.desk_root, name: deskName, sync: status.desk || null } : null,
     update: updateReady,
     updatable: !!updates,
+    peek: { on: !!status?.peek?.on, pausedUntil: peekPaused() ? status!.peek!.paused_until! : '', mode: status?.peek?.mode || '' },
   }
 }
 
@@ -221,6 +277,37 @@ function openPrefs() {
       openSource: () => void shell.openExternal(SOURCE_URL),
       signOut: () => void unpair(),
       pair: pairWindow,
+      setPeek: async (on) => {
+        if (!nemd) return { ok: false, error: 'disconnected' }
+        try {
+          status = await nemd.call<NemdStatus>('peek.set', { on })
+          refresh()
+          return { ok: true }
+        }
+        catch (e) {
+          return { ok: false, error: e instanceof NemdError ? e.code : 'disconnected' }
+        }
+      },
+      pausePeek: (minutes) => void pausePeek(minutes),
+      forgetPeek: async () => {
+        try {
+          await nemd?.call('peek.forget')
+          return true
+        }
+        catch {
+          return false
+        }
+      },
+      peekToday: async () => {
+        try {
+          const r = await nemd?.call<{ today: Record<string, number> }>('peek.get')
+          return r?.today || {}
+        }
+        catch {
+          return {}
+        }
+      },
+      judge: () => void judgeMe(),
     },
   })
 }
@@ -437,6 +524,9 @@ function onNemdEvent(event: string, data: Record<string, unknown>) {
     case 'auth':
       void forgetDeadKey(String(data.error || ''))
       break
+    case 'peek':
+      onPeek(data as unknown as PeekEvent)
+      break
     case 'status':
       // nemd's own news (her desktop's folder set or forgotten): the tray and the settings follow
       status = data as unknown as NemdStatus
@@ -556,6 +646,8 @@ async function start() {
     pair: pairWindow,
     unpair: () => void unpair(),
     installUpdate: () => updates?.install(),
+    peekPause: (minutes) => void pausePeek(minutes),
+    judge: () => void judgeMe(),
     select: (uuid) => {
       nemd?.call<NemdStatus>('companion.select', { uuid })
         .then(async (st) => { status = st; await refreshPet(); refresh() })

@@ -22,6 +22,8 @@ export interface PrefsState {
   update: string
   /** packaged builds update themselves; development runs don't */
   updatable: boolean
+  /** Peek: on, paused until (ISO), and what this computer can tell (front · running · none) */
+  peek: { on: boolean, pausedUntil: string, mode: string }
 }
 
 export type UpdateCheck = 'available' | 'none' | 'unavailable' | 'error'
@@ -40,6 +42,12 @@ export interface PrefsActions {
   openSource: () => void
   signOut: () => void
   pair: () => void
+  setPeek: (on: boolean) => Promise<{ ok: boolean, error?: string }>
+  pausePeek: (minutes: number) => void
+  forgetPeek: () => Promise<boolean>
+  /** today's minutes per category */
+  peekToday: () => Promise<Record<string, number>>
+  judge: () => void
 }
 
 export interface PrefsWindowOptions {
@@ -98,6 +106,10 @@ export function openPrefsWindow(o: PrefsWindowOptions): BrowserWindow {
     'prefs:desk-choose': () => o.act.chooseFolder(win),
     'prefs:desk-stop': () => o.act.stopFolder(win),
     'prefs:updates': () => o.act.checkUpdates(),
+    'prefs:peek': (_e, on) => o.act.setPeek(on === true),
+    'prefs:peek-forget': () => o.act.forgetPeek(),
+    'prefs:peek-today': () => o.act.peekToday(),
+    'prefs:peek-pause': (_e, minutes) => { o.act.pausePeek(typeof minutes === 'number' ? minutes : 0); return true },
   }
   for (const [channel, fn] of Object.entries(handlers)) {
     ipcMain.handle(channel, (e, arg) => (mine(e) ? fn(e, arg) : null))
@@ -109,6 +121,7 @@ export function openPrefsWindow(o: PrefsWindowOptions): BrowserWindow {
     'prefs:source': () => o.act.openSource(),
     'prefs:signout': () => o.act.signOut(),
     'prefs:pair': () => o.act.pair(),
+    'prefs:judge': () => o.act.judge(),
   }
   const listeners = Object.entries(sends).map(([channel, fn]) => {
     const l = (e: Electron.IpcMainEvent) => { if (mine(e)) fn() }

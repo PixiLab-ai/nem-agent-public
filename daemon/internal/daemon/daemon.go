@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/api"
@@ -26,6 +27,7 @@ import (
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/desksync"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/ipc"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/keychain"
+	"github.com/PixiLab-ai/nem-agent/daemon/internal/peek"
 )
 
 // Broadcaster pushes events to the shell.
@@ -77,6 +79,13 @@ type Daemon struct {
 	deskCancel context.CancelFunc
 	deskID     string
 	deskSt     *desksync.Status
+
+	// Peek (package peek): the pet noticing what kind of thing the human is doing, off by
+	// default; activeNow mirrors presence for it without the lock (it asks while sampling);
+	// peekq: what her pet hears, to the site in order
+	peek      *peek.Peek
+	activeNow atomic.Bool
+	peekq     chan peekJob
 }
 
 // New builds a daemon. Run must be called before requests are served.
@@ -85,10 +94,20 @@ func New(cfg *config.Config, version string, keys keychain.Store, save Saver) *D
 	if tz == "Local" {
 		tz = ""
 	}
-	return &Daemon{
+	d := &Daemon{
 		version: version, keys: keys, save: save, tz: tz, cfg: cfg,
 		newClient: api.New, dial: chat.Run, sockSt: chat.Stopped,
 	}
+	statsFile, _ := config.StateFile("peek", ".json")
+	d.peekq = make(chan peekJob, 16)
+	d.peek = peek.New(peek.Options{
+		StatsFile: statsFile,
+		Report:    d.peekReport,
+		Emit:      func(ev peek.Event) { d.emit("peek", ev) },
+		Active:    d.activeNow.Load,
+	})
+	d.peek.SetOn(cfg.Peek)
+	return d
 }
 
 // SetBroadcaster wires the IPC server's event push.
@@ -103,6 +122,8 @@ func (d *Daemon) Run(ctx context.Context) {
 	d.mu.Lock()
 	d.root = ctx
 	d.mu.Unlock()
+	go d.peek.Run(ctx)
+	go d.peekWorker(ctx)
 	d.reconcile()
 	<-ctx.Done()
 	d.mu.Lock()
@@ -316,15 +337,17 @@ type Status struct {
 	DeskRoot      string           `json:"desk_root,omitempty"`
 	DeskCompanion string           `json:"desk_companion,omitempty"`
 	Desk          *desksync.Status `json:"desk,omitempty"` // what the folder sync is doing
+	Peek          peek.Status      `json:"peek"`           // the pet noticing what you're up to
 }
 
 func (d *Daemon) status() Status {
+	pk := d.peek.Status() // before the lock: Peek never takes it, the daemon never holds it while asking
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	st := Status{
 		Version: d.version, Base: d.cfg.Base, Device: d.cfg.Device, Companion: d.cfg.Companion,
 		KeyUUID: d.cfg.KeyUUID, Presence: d.presence, Socket: string(d.sockSt), Reason: d.sockWhy,
-		DeskRoot: d.cfg.DeskRoot, DeskCompanion: d.cfg.DeskCompanion, Desk: d.deskSt,
+		DeskRoot: d.cfg.DeskRoot, DeskCompanion: d.cfg.DeskCompanion, Desk: d.deskSt, Peek: pk,
 	}
 	k, err := d.key(d.cfg.Base)
 	if err != nil {
@@ -424,6 +447,7 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		changed := d.presence != p.State
 		d.presence = p.State
 		d.mu.Unlock()
+		d.activeNow.Store(p.State == Active)
 		if changed {
 			d.reconcile()
 			if p.State == Active {
@@ -477,6 +501,63 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		d.emit("status", st)
 		return st, nil
 
+	case "peek.get":
+		return map[string]any{"status": d.peek.Status(), "today": d.peek.Today()}, nil
+
+	case "peek.set":
+		// the human's yes (or no): only ever from the app's own settings
+		var p struct {
+			On bool `json:"on"`
+		}
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, ipc.Errorf("invalid_params", "peek.set needs {on}")
+		}
+		d.mu.Lock()
+		cfg := *d.cfg
+		d.mu.Unlock()
+		cfg.Peek = p.On
+		if err := d.persist(&cfg); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		d.cfg.Peek = p.On
+		d.mu.Unlock()
+		d.peek.SetOn(p.On)
+		st := d.status()
+		d.emit("status", st)
+		return st, nil
+
+	case "peek.pause":
+		var p struct {
+			Minutes int `json:"minutes"`
+		}
+		if err := json.Unmarshal(params, &p); err != nil || p.Minutes < 0 || p.Minutes > 24*60 {
+			return nil, ipc.Errorf("invalid_params", "peek.pause needs {minutes} (0 resumes)")
+		}
+		d.peek.Pause(time.Duration(p.Minutes) * time.Minute)
+		st := d.status()
+		d.emit("status", st)
+		return st, nil
+
+	case "peek.forget":
+		if err := d.peek.Forget(); err != nil {
+			return nil, ipc.Errorf("stats_unwritable", "%v", err)
+		}
+		return map[string]bool{"forgotten": true}, nil
+
+	case "peek.card":
+		return d.peek.Card(), nil
+
+	case "peek.judge":
+		// "Judge me": her pet answers in its own voice (a `pet` frame brings the line); said:false
+		// = the app says its own (the card comes back for it)
+		r, ev, on := d.peek.Judge()
+		if !on {
+			return nil, ipc.Errorf("peek_off", "Peek is off")
+		}
+		ans, ok := d.peekSend(ctx, r)
+		return map[string]any{"said": ok && ans.Said, "line": ans.Line, "card": ev.Card}, nil
+
 	case "desk.now":
 		// a pass now (the settings window's "sync now", a test)
 		d.pokeDesk()
@@ -520,6 +601,54 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		return raw, nil
 	}
 	return nil, ipc.Errorf("unknown_method", "%q", method)
+}
+
+// --- Peek → her pet (package peek: kinds of things and minutes, never an app or a name) ---------
+
+type peekJob struct {
+	r  peek.Report
+	ev *peek.Event
+}
+
+// peekReport queues what her pet may hear. Full (the site is stuck): a moment falls back on the
+// app's own line, a plain report waits for the next one.
+func (d *Daemon) peekReport(r peek.Report, ev *peek.Event) {
+	select {
+	case d.peekq <- peekJob{r, ev}:
+	default:
+		if ev != nil {
+			d.emit("peek", *ev)
+		}
+	}
+}
+
+func (d *Daemon) peekWorker(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j := <-d.peekq:
+			if _, ok := d.peekSend(ctx, j.r); !ok && j.ev != nil {
+				d.emit("peek", *j.ev) // the site can't answer (offline, older, no line): the app's own
+			}
+		}
+	}
+}
+
+// peekSend tells her pet. ok: the site took it (a line or not: too soon, muted, she's talking…
+// — then nothing from the app either); not ok: not paired, offline, refused, or the line failed.
+func (d *Daemon) peekSend(ctx context.Context, r peek.Report) (api.PeekAnswer, bool) {
+	cl, cfg, err := d.client()
+	if err != nil || cfg.Companion == "" {
+		return api.PeekAnswer{}, false
+	}
+	cctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	ans, err := cl.PetPeek(cctx, cfg.Companion, r)
+	if err != nil {
+		return ans, false
+	}
+	return ans, ans.Reason != "failed"
 }
 
 // pair stores a freshly minted key (the shell got it from the logged-in page), checks it works,

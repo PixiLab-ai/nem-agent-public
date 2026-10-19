@@ -2,7 +2,7 @@
 // It only relays what the pet needs: state in, hit boxes / hover / drag / tap out.
 import { contextBridge, ipcRenderer } from 'electron'
 
-const IN = new Set(['overlay:info', 'overlay:frame', 'overlay:say', 'overlay:visible'])
+const IN = new Set(['overlay:info', 'overlay:frame', 'overlay:say', 'overlay:visible', 'overlay:peek'])
 
 export interface HitRect { x: number, y: number, width: number, height: number }
 

@@ -14,6 +14,14 @@ All notable changes to the Nemini desktop app. Versions follow [semver](https://
   avatar…) come down but stay theirs: a change made to one in the folder is undone. When both
   sides changed the same file, both versions are kept. Many files deleted at once wait for your
   yes; files they delete land in a local trash first.
+- **Peek** (off by default, in the settings): the pet notices what *kind* of thing you're doing —
+  coding, gaming, chatting, watching… and for how long — and teases you about it in its own voice:
+  two hours of code, still gaming at 2 am, back in the chat for the tenth time this hour, a report
+  card on Sunday or whenever you ask ("Judge me"). The app reads only which app is in front and how
+  long it stays there — never a window's title, a web address, a file, the screen or what you
+  type. The pet hears the kind of thing and the minutes; a game's name stays on this computer. Two
+  small eyes sit on the pet while it's on; the tray pauses it for an hour, the settings forget its
+  stats. It keeps quiet in meetings and over anything full screen.
 - Development runs keep their own settings, apart from the installed app.
 
 ## 0.1.0-alpha.1 — 2026-10-19

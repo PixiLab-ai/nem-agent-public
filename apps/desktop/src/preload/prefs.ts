@@ -17,6 +17,12 @@ const api = {
   installUpdate() { ipcRenderer.send('prefs:install') },
   openSource() { ipcRenderer.send('prefs:source') },
   signOut() { ipcRenderer.send('prefs:signout') },
+  /** Peek: the switch, a pause (0 resumes), today's minutes, forgetting, the report card in the pet's bubble */
+  setPeek(on: boolean): Promise<{ ok: boolean, error?: string }> { return ipcRenderer.invoke('prefs:peek', on) },
+  pausePeek(minutes: number): Promise<boolean> { return ipcRenderer.invoke('prefs:peek-pause', minutes) },
+  peekToday(): Promise<Record<string, number>> { return ipcRenderer.invoke('prefs:peek-today') },
+  forgetPeek(): Promise<boolean> { return ipcRenderer.invoke('prefs:peek-forget') },
+  judge() { ipcRenderer.send('prefs:judge') },
   pair() { ipcRenderer.send('prefs:pair') },
 }
 
