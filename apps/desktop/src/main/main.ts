@@ -308,6 +308,7 @@ function openPrefs() {
         }
       },
       judge: () => void judgeMe(),
+      quit: () => app.quit(),
     },
   })
 }
@@ -370,12 +371,21 @@ function showMain() {
       // a key is only ever sent to the site it was made on
       key: () => (key && key.base === site ? key.key : null),
       noExternal: argv.includes('--no-external'),
-      onAppLink: (what) => { if (what === 'settings') openPrefs() },
+      onAppLink: (what) => {
+        if (what === 'settings') openPrefs()
+        if (what === 'quit') app.quit()
+      },
     })
     main.on('close', (e) => {
       if (quitting) return
       e.preventDefault()
-      main?.hide() // the app lives on in the tray, with the pet
+      main?.hide() // the app lives on in the background, with the pet
+      // the first time: say so, and how to quit (some desktops never show the tray)
+      if (!settings.closeHinted && Notification.isSupported()) {
+        settings.closeHinted = true
+        saveSettings(settings)
+        new Notification({ title: t('notify.still_running_title'), body: t('notify.still_running_body', { keys: process.platform === 'darwin' ? '⌘Q' : 'Ctrl+Q' }), icon: join(assets, 'icon.png') }).show()
+      }
     })
     return
   }

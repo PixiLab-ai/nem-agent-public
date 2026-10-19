@@ -151,6 +151,7 @@ $<HTMLInputElement>('autostart').addEventListener('change', async (e) => {
 btn('signout').addEventListener('click', () => window.prefs.signOut())
 btn('pair').addEventListener('click', () => window.prefs.pair())
 btn('install').addEventListener('click', () => window.prefs.installUpdate())
+btn('quit').addEventListener('click', () => window.prefs.quit())
 btn('source').addEventListener('click', () => window.prefs.openSource())
 btn('updates').addEventListener('click', async () => {
   btn('updates').disabled = true

@@ -36,8 +36,11 @@ and choose **Open**; on Windows, **More info → Run anyway**.
 ### Updates
 
 The app checks for a new release when it starts and every few hours, downloads it in the
-background, and installs it when you quit — or right away from the tray menu (**Restart to
-update**). The Debian package asks for your password to install an update. What changed in each
+background, and installs it when you quit — or right away with **Restart and install** in the
+settings (**Restart to update** in the tray menu).
+
+Closing the window doesn't quit: Nemini keeps running in the background with the pet and
+notifications. To quit, use **Quit Nemini** in the settings (or the tray menu). The Debian package asks for your password to install an update. What changed in each
 version: [CHANGELOG.md](CHANGELOG.md).
 
 ## Signing in

@@ -48,6 +48,8 @@ export interface PrefsActions {
   /** today's minutes per category */
   peekToday: () => Promise<Record<string, number>>
   judge: () => void
+  /** quits the whole app (windows, the pet, nemd) */
+  quit: () => void
 }
 
 export interface PrefsWindowOptions {
@@ -122,6 +124,7 @@ export function openPrefsWindow(o: PrefsWindowOptions): BrowserWindow {
     'prefs:signout': () => o.act.signOut(),
     'prefs:pair': () => o.act.pair(),
     'prefs:judge': () => o.act.judge(),
+    'prefs:quit': () => o.act.quit(),
   }
   const listeners = Object.entries(sends).map(([channel, fn]) => {
     const l = (e: Electron.IpcMainEvent) => { if (mine(e)) fn() }

@@ -32,7 +32,7 @@ export interface MainWindowOptions {
   key: () => string | null
   /** development: log outside links instead of opening them (`--no-external`) */
   noExternal?: boolean
-  /** the site's links into the app itself (`nemini-app://settings`) and Ctrl+, : what to open */
+  /** the site's links into the app itself (`nemini-app://settings`), Ctrl+, and Ctrl+Q: what to do */
   onAppLink?: (what: string) => void
 }
 
@@ -140,6 +140,11 @@ export function createMainWindow(o: MainWindowOptions): BrowserWindow {
     if (input.type === 'keyDown' && input.key === ',' && (process.platform === 'darwin' ? input.meta : input.control) && !input.alt && !input.shift) {
       e.preventDefault()
       o.onAppLink?.('settings')
+    }
+    // Ctrl+Q quits (Linux, Windows; macOS has ⌘Q in its app menu)
+    if (input.type === 'keyDown' && process.platform !== 'darwin' && input.control && !input.alt && !input.shift && input.key.toLowerCase() === 'q') {
+      e.preventDefault()
+      o.onAppLink?.('quit')
     }
   })
   win.webContents.on('will-redirect', (e) => {

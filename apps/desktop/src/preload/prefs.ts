@@ -17,6 +17,8 @@ const api = {
   installUpdate() { ipcRenderer.send('prefs:install') },
   openSource() { ipcRenderer.send('prefs:source') },
   signOut() { ipcRenderer.send('prefs:signout') },
+  /** quits the whole app: windows, the pet, nemd */
+  quit() { ipcRenderer.send('prefs:quit') },
   /** Peek: the switch, a pause (0 resumes), today's minutes, forgetting, the report card in the pet's bubble */
   setPeek(on: boolean): Promise<{ ok: boolean, error?: string }> { return ipcRenderer.invoke('prefs:peek', on) },
   pausePeek(minutes: number): Promise<boolean> { return ipcRenderer.invoke('prefs:peek-pause', minutes) },
