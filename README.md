@@ -1,15 +1,15 @@
 # Nemini desktop
 
-Nemini on your computer: the Nemini web app in its own window, her pet living on your desktop, and
-a small background service that keeps her close while you're there.
+Nemini on your computer: the Nemini web app in its own window, your companion's pet living on your desktop, and
+a small background service that keeps them close while you're there.
 
 - **The window** is the Nemini web app itself, so every feature is there and stays current with
   the web. Every model call works exactly as on the web: the same API, and the server picks your
   own provider key or Nemini's.
 - **The pet** sits on top of your other windows, click-through everywhere but itself. It says
-  small things, hops, takes a tap, shows when she's writing, and opens its card on a right-click.
+  small things, hops, takes a tap, shows when they're writing, and opens its card on a right-click.
   Drag it anywhere; it stays where you drop it.
-- **Notifications** for her messages while the window is in the background.
+- **Notifications** for their messages while the window is in the background.
 
 ## Install
 
@@ -56,7 +56,7 @@ webhooks, billing, and exporting or deleting your data.
 | `daemon` | `nemd`, the background service (Go): the key, the chat socket, private IPC |
 | `packages/pet` | the pet: sprites, state, the Vue components the overlay renders |
 
-`nemd` holds the key in the OS keychain and keeps her chat socket open only while you're active
+`nemd` holds the key in the OS keychain and keeps their chat socket open only while you're active
 at the computer. The shell talks to it over a Unix socket private to your user (a named pipe on
 Windows); nothing listens on a network port.
 

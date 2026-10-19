@@ -56,7 +56,7 @@ linux:
   # the pet needs X11: XWayland on Wayland desktops (main.ts restarts with this when it's missing)
   executableArgs: ["--ozone-platform=x11"]
   maintainer: Pixilab
-  synopsis: Nemini, and her pet on your desktop
+  synopsis: Nemini, and your companion's pet on your desktop
   extraResources:
     - from: ../../daemon/bin/linux-${arch}/nemd
       to: nemd

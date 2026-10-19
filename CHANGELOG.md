@@ -9,11 +9,11 @@ The first preview (alpha): expect rough edges; builds are unsigned.
 - **The Nemini web app in its own window**, signed in with a key made on the website (Settings →
   Keys) and pasted in the app — no password, no login page. The parts that need a browser
   session open on the website.
-- **Her pet on the desktop**: on top of other windows, click-through everywhere but itself. It
-  speaks in small bubbles, hops, takes a tap, shows when she's writing and how her last reply
+- **Your companion's pet on the desktop**: on top of other windows, click-through everywhere but itself. It
+  speaks in small bubbles, hops, takes a tap, shows when they're writing and how their last reply
   felt, and opens its card on a right-click. Drag it anywhere; it stays where you drop it.
-- **Notifications** for her messages while the window is in the background.
-- **Presence**: her live connection is open only while you're active at the computer.
+- **Notifications** for their messages while the window is in the background.
+- **Presence**: their live connection is open only while you're active at the computer.
 - **Start at login** (off by default), quietly: just the pet and the tray.
 - **Updates** downloaded in the background, installed when you quit.
 - **Six languages**: English, French, German, Chinese, Spanish, Japanese.

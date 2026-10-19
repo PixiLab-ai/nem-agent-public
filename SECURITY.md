@@ -21,7 +21,7 @@ their own.
   key can't lock you out or take over those.
 - **No open ports.** The app and `nemd` talk over a channel only your user account can open (a
   Unix socket, a named pipe on Windows). Nothing listens on the network.
-- **Presence.** Her live connection is open only while you're active at the computer — not while
+- **Presence.** Your companion's live connection is open only while you're active at the computer — not while
   it's idle, locked or asleep.
 - **What the server records about a key**: when it was last used, from which IP address, and its
   User-Agent (the app's version and your operating system). You see it in Settings → App.
