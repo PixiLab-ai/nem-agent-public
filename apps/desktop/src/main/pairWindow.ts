@@ -2,6 +2,7 @@
 // (Settings → App), pastes it here; nemd checks it against the site before keeping it in the OS
 // keychain, and the app's window is signed in with it from then on. No login, no cookie, no
 // OAuth inside the app.
+import { inactive, present } from './inactive'
 import { BrowserWindow, ipcMain, shell } from 'electron'
 import type { Lang, T } from '../shared/i18n'
 
@@ -20,8 +21,8 @@ let current: BrowserWindow | null = null
 
 export function openPairWindow(o: PairWindowOptions): BrowserWindow {
   if (current && !current.isDestroyed()) {
-    current.show()
-    current.focus()
+    present(current)
+    if (!inactive) current.focus()
     return current
   }
   const win = new BrowserWindow({
@@ -45,7 +46,7 @@ export function openPairWindow(o: PairWindowOptions): BrowserWindow {
     },
   })
   current = win
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => present(win))
   win.webContents.on('will-navigate', e => e.preventDefault())
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 

@@ -19,6 +19,9 @@ export interface NemdStatus {
   socket: string
   reason?: string
   keychain?: string
+  /** the folder that holds a companion's desktop on this computer, and that companion (nemd's desksync) */
+  desk_root?: string
+  desk_companion?: string
 }
 
 export interface Companion { uuid: string, name: string }

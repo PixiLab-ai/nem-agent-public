@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/api"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/chat"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/config"
+	"github.com/PixiLab-ai/nem-agent/daemon/internal/desksync"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/ipc"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/keychain"
 )
@@ -204,6 +206,9 @@ type Status struct {
 	Socket    string `json:"socket"`
 	Reason    string `json:"reason,omitempty"`
 	Keychain  string `json:"keychain,omitempty"` // an error reading the OS store, if any
+	// the folder that holds a companion's desk on this computer, and that companion (desksync)
+	DeskRoot      string `json:"desk_root,omitempty"`
+	DeskCompanion string `json:"desk_companion,omitempty"`
 }
 
 func (d *Daemon) status() Status {
@@ -212,6 +217,7 @@ func (d *Daemon) status() Status {
 	st := Status{
 		Version: d.version, Base: d.cfg.Base, Device: d.cfg.Device, Companion: d.cfg.Companion,
 		KeyUUID: d.cfg.KeyUUID, Presence: d.presence, Socket: string(d.sockSt), Reason: d.sockWhy,
+		DeskRoot: d.cfg.DeskRoot, DeskCompanion: d.cfg.DeskCompanion,
 	}
 	k, err := d.key(d.cfg.Base)
 	if err != nil {
@@ -316,6 +322,49 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		}
 		return d.status(), nil
 
+	case "desk.set":
+		// the human picked (or made) a folder for the shown companion's desk: an empty one, or one
+		// already hers (desksync.Check); it is marked, kept in the config, and the sync starts there
+		var p struct {
+			Root string `json:"root"`
+		}
+		if err := json.Unmarshal(params, &p); err != nil || strings.TrimSpace(p.Root) == "" {
+			return nil, ipc.Errorf("invalid_params", "desk.set needs {root}")
+		}
+		d.mu.Lock()
+		cfg := *d.cfg
+		d.mu.Unlock()
+		if cfg.Companion == "" {
+			return nil, ipc.Errorf("no_companion", "no companion chosen")
+		}
+		if err := desksync.Claim(p.Root, cfg.Companion, cfg.Base); err != nil {
+			var fe *desksync.FolderError
+			if errors.As(err, &fe) {
+				return nil, ipc.Errorf(fe.Code, "%s", fe.Path)
+			}
+			return nil, ipc.Errorf("folder_unusable", "%v", err)
+		}
+		cfg.DeskRoot, cfg.DeskCompanion = filepath.Clean(p.Root), cfg.Companion
+		if err := d.persist(&cfg); err != nil {
+			return nil, err
+		}
+		d.mu.Lock()
+		d.cfg.DeskRoot, d.cfg.DeskCompanion = cfg.DeskRoot, cfg.DeskCompanion
+		d.mu.Unlock()
+		st := d.status()
+		d.emit("status", st)
+		return st, nil
+
+	case "desk.unset":
+		// stop syncing: the folder and its files stay where they are (and stay hers: re-linked if
+		// picked again)
+		if err := d.forgetDesk(); err != nil {
+			return nil, err
+		}
+		st := d.status()
+		d.emit("status", st)
+		return st, nil
+
 	case "pet.get", "pet.pet":
 		cl, cfg, err := d.client()
 		if err != nil {
@@ -403,15 +452,32 @@ func (d *Daemon) unpair(_ context.Context) (any, error) {
 		return nil, ipc.Errorf("keychain_unavailable", "%v", err)
 	}
 	cfg.KeyUUID = ""
+	cfg.DeskRoot, cfg.DeskCompanion = "", "" // signed out: the folder stops syncing, its files stay
 	if err := d.persist(&cfg); err != nil {
 		return nil, err
 	}
 	d.mu.Lock()
 	d.cfg.KeyUUID = ""
+	d.cfg.DeskRoot, d.cfg.DeskCompanion = "", ""
 	d.mu.Unlock()
 	d.emit("unpaired", map[string]any{"base": base})
 	d.reconcile()
 	return d.status(), nil
+}
+
+// forgetDesk stops the folder sync (the folder and its files stay).
+func (d *Daemon) forgetDesk() error {
+	d.mu.Lock()
+	cfg := *d.cfg
+	d.mu.Unlock()
+	cfg.DeskRoot, cfg.DeskCompanion = "", ""
+	if err := d.persist(&cfg); err != nil {
+		return err
+	}
+	d.mu.Lock()
+	d.cfg.DeskRoot, d.cfg.DeskCompanion = "", ""
+	d.mu.Unlock()
+	return nil
 }
 
 func (d *Daemon) persist(cfg *config.Config) error {

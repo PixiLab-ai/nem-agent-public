@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'" />
+    <title>Nemini</title>
+    <link rel="stylesheet" href="./prefs.css" />
+  </head>
+  <body>
+    <main>
+      <h1 data-t="prefs.title"></h1>
+
+      <section aria-labelledby="desk-h">
+        <h2 id="desk-h"></h2>
+        <p id="desk-p"></p>
+        <p id="desk-where" class="where"></p>
+        <p id="desk-state" class="state"></p>
+        <p class="buttons">
+          <button id="desk-choose" type="button" data-t="prefs.desk.choose"></button>
+          <button id="desk-open" type="button" class="ghost" data-t="prefs.desk.open"></button>
+          <button id="desk-stop" type="button" class="ghost" data-t="prefs.desk.stop"></button>
+        </p>
+        <p id="desk-msg" class="msg" role="status" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="local-h">
+        <h2 id="local-h" data-t="prefs.local.h"></h2>
+        <label class="check"><input id="pet" type="checkbox" /><span data-t="tray.show_pet"></span></label>
+        <label class="check"><input id="autostart" type="checkbox" /><span data-t="tray.autostart"></span></label>
+        <p id="local-msg" class="msg" role="status" aria-live="polite"></p>
+      </section>
+
+      <section aria-labelledby="account-h">
+        <h2 id="account-h" data-t="prefs.account.h"></h2>
+        <p id="account"></p>
+        <p class="buttons">
+          <button id="signout" type="button" class="ghost" data-t="tray.unpair"></button>
+          <button id="pair" type="button" data-t="tray.pair"></button>
+        </p>
+      </section>
+
+      <section aria-labelledby="about-h">
+        <h2 id="about-h" data-t="prefs.about.h"></h2>
+        <p id="version"></p>
+        <p class="buttons">
+          <button id="updates" type="button" class="ghost" data-t="prefs.about.updates"></button>
+          <button id="install" type="button" data-t="prefs.about.install"></button>
+          <button id="source" type="button" class="link" data-t="prefs.about.source"></button>
+        </p>
+        <p id="update-msg" class="msg" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+    <script src="./prefs.js"></script>
+  </body>
+</html>

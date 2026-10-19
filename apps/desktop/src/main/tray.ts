@@ -19,6 +19,8 @@ export interface TrayState {
 
 export interface TrayActions {
   open: () => void
+  /** the app's own settings window */
+  settings: () => void
   togglePet: (visible: boolean) => void
   toggleAutostart: (on: boolean) => void
   pair: () => void
@@ -53,6 +55,7 @@ export class AppTray {
       ...(s.update ? [{ label: this.t('tray.update', { version: s.update }), click: () => this.act.installUpdate() }] : []),
       { type: 'separator' },
       { label: this.t('tray.open'), enabled: !s.demo, click: () => this.act.open() },
+      { label: this.t('tray.settings'), enabled: !s.demo, click: () => this.act.settings() },
       { label: this.t('tray.show_pet'), type: 'checkbox', checked: s.petVisible, click: item => this.act.togglePet(item.checked) },
       { label: this.t('tray.autostart'), type: 'checkbox', checked: s.autostart, enabled: !s.demo, click: item => this.act.toggleAutostart(item.checked) },
       ...(s.paired && s.companions.length > 1

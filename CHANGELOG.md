@@ -2,6 +2,16 @@
 
 All notable changes to the Nemini desktop app. Versions follow [semver](https://semver.org).
 
+## Unreleased
+
+- **The app's own settings window** (tray → Settings…, Ctrl+, — Cmd+, on macOS — or the website's
+  Settings → App inside the app): the pet and start at login on this computer, signing this
+  computer out, the version and a check for updates.
+- **Your companion's desktop as a folder on this computer — the first step:** choose or create an
+  empty folder for it in the settings (a folder with files in it, a whole drive or your home folder
+  itself is refused). Syncing itself comes next.
+- Development runs keep their own settings, apart from the installed app.
+
 ## 0.1.0-alpha.1 — 2026-10-19
 
 The first preview (alpha): expect rough edges; builds are unsigned.

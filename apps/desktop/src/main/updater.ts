@@ -3,6 +3,7 @@
 // in the background and installs when the app quits — or right away, from the tray ("Restart to
 // update"). Packaged builds only. A failed check (offline, the repository still private) is
 // logged, never shown. NEM_NO_UPDATES=1 turns it off.
+import type { UpdateCheck } from './prefsWindow'
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
@@ -12,6 +13,8 @@ const EVERY_MS = 6 * 3600_000
 export interface Updates {
   /** quit now and install the downloaded version */
   install: () => void
+  /** look now (the settings window's button): a newer version is downloading, or there is none */
+  check: () => Promise<UpdateCheck>
 }
 
 export function startUpdates(onReady: (version: string) => void): Updates | null {
@@ -31,5 +34,16 @@ export function startUpdates(onReady: (version: string) => void): Updates | null
   const check = () => { autoUpdater.checkForUpdates().catch(() => {}) }
   setTimeout(check, FIRST_CHECK_MS)
   setInterval(check, EVERY_MS)
-  return { install: () => autoUpdater.quitAndInstall() }
+  return {
+    install: () => autoUpdater.quitAndInstall(),
+    check: async () => {
+      try {
+        const r = await autoUpdater.checkForUpdates()
+        return r?.isUpdateAvailable ? 'available' : 'none'
+      }
+      catch {
+        return 'error'
+      }
+    },
+  }
 }

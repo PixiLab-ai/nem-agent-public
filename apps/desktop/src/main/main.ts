@@ -10,15 +10,18 @@
 //   electron . --nemd=<path>        a nemd binary other than daemon/bin/nemd
 //   electron . --no-external        development: log outside links instead of opening them
 //   electron . --background         no window at start, just the pet and the tray (how login starts it)
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app, type BrowserWindow, dialog, Menu, Notification, shell } from 'electron'
 import { autostartEnabled, BACKGROUND_FLAG, setAutostart } from './autostart'
 import { Demo } from './demo'
+import { inactive, present } from './inactive'
 import { createMainWindow } from './mainWindow'
 import { type Companion, Nemd, NemdError, type NemdStatus, nemdBinary } from './nemd'
 import { notifyFrame } from './notify'
 import { Overlay } from './overlay'
 import { openPairWindow } from './pairWindow'
+import { openPrefsWindow, type PrefsState, pushPrefs } from './prefsWindow'
 import { type Presence, PresenceWatch } from './presence'
 import { loadSettings, saveSettings, type Settings } from './settings'
 import { AppTray } from './tray'
@@ -136,6 +139,107 @@ function refresh() {
     update: updateReady || undefined,
     companions: companions.map(c => ({ ...c, selected: c.uuid === status?.companion })),
   })
+  pushPrefs(prefsState())
+}
+
+// --- the app's own settings (main/prefsWindow.ts) -------------------------------------------
+
+const SOURCE_URL = 'https://github.com/PixiLab-ai/nem-agent-public'
+
+function hostOf(u: string): string {
+  try { return new URL(u).host }
+  catch { return u }
+}
+
+function prefsState(): PrefsState {
+  const deskName = companions.find(c => c.uuid === status?.desk_companion)?.name || companionName()
+  return {
+    version: VERSION,
+    site: hostOf(base()),
+    paired: !!status?.paired,
+    companion: status?.companion ? companionName() : '',
+    pet: settings.petVisible,
+    autostart: !DEMO && safeAutostartEnabled(),
+    autostartAvailable: !DEMO,
+    desk: status?.desk_root ? { root: status.desk_root, name: deskName } : null,
+    update: updateReady,
+    updatable: !!updates,
+  }
+}
+
+function openPrefs() {
+  if (DEMO) return
+  openPrefsWindow({
+    preload: join(dist, 'preload/prefs.cjs'),
+    page: join(dist, 'prefs/index.html'),
+    lang,
+    t,
+    act: {
+      state: prefsState,
+      setPet: (on) => { settings.petVisible = on; saveSettings(settings); refresh() },
+      setAutostart: (on) => {
+        try {
+          setAutostart(on)
+          return null
+        }
+        catch (e) {
+          return t('dialog.autostart_failed', { error: (e as Error).message })
+        }
+        finally {
+          refresh()
+        }
+      },
+      chooseFolder: chooseDeskFolder,
+      openFolder: () => { if (status?.desk_root) void shell.openPath(status.desk_root) },
+      stopFolder: stopDeskFolder,
+      checkUpdates: async () => (updates ? updates.check() : 'unavailable'),
+      installUpdate: () => updates?.install(),
+      openSource: () => void shell.openExternal(SOURCE_URL),
+      signOut: () => void unpair(),
+      pair: pairWindow,
+    },
+  })
+}
+
+/** Her desktop's folder: the picker (an empty folder, or a new one), then nemd's check and claim. */
+async function chooseDeskFolder(win: BrowserWindow): Promise<{ ok: boolean, error?: string }> {
+  if (!nemd) return { ok: false, error: 'disconnected' }
+  const home = app.getPath('home')
+  const suggested = join(home, 'Nemini')
+  const r = await dialog.showOpenDialog(win, {
+    title: t('prefs.desk.pick_title', { name: companionName() }),
+    buttonLabel: t('prefs.desk.pick_button'),
+    defaultPath: existsSync(suggested) ? suggested : home,
+    properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
+  })
+  if (r.canceled || !r.filePaths[0]) return { ok: false, error: 'canceled' }
+  try {
+    status = await nemd.call<NemdStatus>('desk.set', { root: r.filePaths[0] })
+    refresh()
+    return { ok: true }
+  }
+  catch (e) {
+    return { ok: false, error: e instanceof NemdError ? e.code : 'disconnected' }
+  }
+}
+
+/** Stop syncing: the folder and its files stay. */
+async function stopDeskFolder(win: BrowserWindow): Promise<{ ok: boolean, error?: string }> {
+  if (!nemd) return { ok: false, error: 'disconnected' }
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'question', title: 'Nemini', buttons: [t('prefs.desk.stop'), t('dialog.cancel')], defaultId: 1, cancelId: 1,
+    message: t('prefs.desk.stop_q'),
+    detail: t('prefs.desk.stop_detail'),
+  })
+  if (response !== 0) return { ok: false, error: 'canceled' }
+  try {
+    status = await nemd.call<NemdStatus>('desk.unset')
+    refresh()
+    return { ok: true }
+  }
+  catch (e) {
+    return { ok: false, error: e instanceof NemdError ? e.code : 'disconnected' }
+  }
 }
 
 function safeAutostartEnabled(): boolean {
@@ -155,6 +259,7 @@ function showMain() {
       // a key is only ever sent to the site it was made on
       key: () => (key && key.base === site ? key.key : null),
       noExternal: argv.includes('--no-external'),
+      onAppLink: (what) => { if (what === 'settings') openPrefs() },
     })
     main.on('close', (e) => {
       if (quitting) return
@@ -164,8 +269,8 @@ function showMain() {
     return
   }
   if (main.isMinimized()) main.restore()
-  main.show()
-  main.focus()
+  present(main)
+  if (!inactive) main.focus()
 }
 
 /** The window's sign-in follows the key: reload it when the key comes or goes. */
@@ -308,6 +413,11 @@ function onNemdEvent(event: string, data: Record<string, unknown>) {
     case 'auth':
       void forgetDeadKey(String(data.error || ''))
       break
+    case 'status':
+      // nemd's own news (her desktop's folder set or forgotten): the tray and the settings follow
+      status = data as unknown as NemdStatus
+      refresh()
+      break
     case 'paired':
     case 'unpaired':
       void (async () => {
@@ -388,7 +498,7 @@ function productionMenu() {
     return
   }
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: 'appMenu', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
+    { role: 'appMenu', submenu: [{ role: 'about' }, { type: 'separator' }, { label: t('tray.settings'), accelerator: 'Cmd+,', click: () => openPrefs() }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] },
     { role: 'editMenu' },
     { role: 'windowMenu' },
   ]))
@@ -412,6 +522,7 @@ async function start() {
   })
   tray = new AppTray(join(assets, 'tray.png'), { status: statusLine(), paired: false, petVisible: settings.petVisible, autostart: !DEMO && safeAutostartEnabled(), demo: DEMO, companions: [] }, {
     open: showMain,
+    settings: openPrefs,
     togglePet: (on) => { settings.petVisible = on; saveSettings(settings); refresh() },
     toggleAutostart: (on) => {
       try { setAutostart(on) }

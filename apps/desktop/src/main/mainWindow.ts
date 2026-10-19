@@ -10,6 +10,7 @@
 // the Nemini origin; every new window and every way off the site opens in the human's own
 // browser — that's also where the parts that need a browser session live (keys, billing, the
 // danger zone). Mic and notifications are granted to the Nemini origin only.
+import { present } from './inactive'
 import { BrowserWindow, type Session, session, shell } from 'electron'
 import { originOf, sameSite } from './origin'
 
@@ -31,6 +32,8 @@ export interface MainWindowOptions {
   key: () => string | null
   /** development: log outside links instead of opening them (`--no-external`) */
   noExternal?: boolean
+  /** the site's links into the app itself (`nemini-app://settings`) and Ctrl+, : what to open */
+  onAppLink?: (what: string) => void
 }
 
 /** The chat socket is ws(s)://; for "is it the site" it's the same host as http(s)://. */
@@ -101,7 +104,7 @@ export function createMainWindow(o: MainWindowOptions): BrowserWindow {
       spellcheck: true,
     },
   })
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => present(win))
 
   // The page stays on the Nemini site; when the page itself would leave it (outside links, Stripe
   // checkout), the human's own browser opens instead. Only the page: iframes (captchas, payment
@@ -120,14 +123,30 @@ export function createMainWindow(o: MainWindowOptions): BrowserWindow {
     console.log(`[nem] outside the window (${how}), opening in the browser: ${originOf(url) || 'mailto'}`)
     void shell.openExternal(url)
   }
+  // The site's own links into the app (its Settings › App page, in the app: nemini-app://settings)
+  // never navigate: the app opens what they name.
+  const appLink = (url: string): boolean => {
+    const m = /^nemini-app:\/*([a-z-]+)/i.exec(url)
+    if (!m) return false
+    o.onAppLink?.(m[1].toLowerCase())
+    return true
+  }
   win.webContents.on('will-navigate', (e) => {
+    if (appLink(e.url)) { e.preventDefault(); return }
     if (e.isMainFrame && !sameSite(e.url, o.base)) { e.preventDefault(); external(e.url, 'navigate') }
+  })
+  // Ctrl+, (Cmd+, on macOS): the app's settings, as in other desktop apps
+  win.webContents.on('before-input-event', (e, input) => {
+    if (input.type === 'keyDown' && input.key === ',' && (process.platform === 'darwin' ? input.meta : input.control) && !input.alt && !input.shift) {
+      e.preventDefault()
+      o.onAppLink?.('settings')
+    }
   })
   win.webContents.on('will-redirect', (e) => {
     if (e.isMainFrame && !sameSite(e.url, o.base)) { e.preventDefault(); external(e.url, 'redirect') }
   })
   win.webContents.setWindowOpenHandler(({ url }) => {
-    external(url, 'new window')
+    if (!appLink(url)) external(url, 'new window')
     return { action: 'deny' }
   })
   win.webContents.on('will-attach-webview', e => e.preventDefault())

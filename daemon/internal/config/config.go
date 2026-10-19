@@ -25,6 +25,10 @@ type Config struct {
 	Device    string `json:"device"`              // the name the device key carries in Settings
 	Companion string `json:"companion,omitempty"` // the companion the desktop shows ("" = not chosen yet)
 	KeyUUID   string `json:"key_uuid,omitempty"`  // the device key's id on the site (not the secret): what unpairing revokes
+	// DeskRoot is the folder on this computer that holds a companion's desk (package desksync),
+	// DeskCompanion that companion: the folder stays bound to her when the tray shows another.
+	DeskRoot      string `json:"desk_root,omitempty"`
+	DeskCompanion string `json:"desk_companion,omitempty"`
 }
 
 // profile separates a second set of state on the same machine: the development app ("dev") gets

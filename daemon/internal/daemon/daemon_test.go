@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +18,7 @@ import (
 
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/api"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/config"
+	"github.com/PixiLab-ai/nem-agent/daemon/internal/desksync"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/ipc"
 	"github.com/PixiLab-ai/nem-agent/daemon/internal/keychain"
 )
@@ -322,5 +325,56 @@ func TestPresenceValidated(t *testing.T) {
 	}
 	if r := sh.call(t, "pair", map[string]string{"token": "not-a-key"}); r.Error == nil || r.Error.Code != "invalid_params" {
 		t.Fatalf("non-swm token accepted: %+v", r)
+	}
+}
+
+// desk.set marks the chosen folder and keeps it; desk.unset forgets it (the files stay); a
+// non-empty folder is refused with a code the shell can say in words.
+func TestDeskFolder(t *testing.T) {
+	site := &fakeSite{t: t, key: "swm_good", send: make(chan string, 8), revoke: make(chan struct{})}
+	ts := httptest.NewServer(site.handler())
+	defer ts.Close()
+	sh, d, _ := startDaemon(t, ts)
+	root := t.TempDir()
+	if r := sh.call(t, "desk.set", map[string]string{"root": root}); r.Error == nil || r.Error.Code != "no_companion" {
+		t.Fatalf("desk.set before pairing = %+v, want no_companion", r.Error)
+	}
+	if r := sh.call(t, "pair", map[string]string{"token": "swm_good"}); r.Error != nil {
+		t.Fatalf("pair: %v", r.Error)
+	}
+	if r := sh.call(t, "desk.set", map[string]string{"root": root}); r.Error != nil {
+		t.Fatalf("desk.set: %v", r.Error)
+	}
+	if st := d.status(); st.DeskRoot != root || st.DeskCompanion != "c-1" {
+		t.Fatalf("status after desk.set: %+v", st)
+	}
+	if _, err := os.Stat(filepath.Join(root, desksync.MarkerName)); err != nil {
+		t.Fatalf("no marker: %v", err)
+	}
+	if r := sh.call(t, "desk.unset", nil); r.Error != nil {
+		t.Fatalf("desk.unset: %v", r.Error)
+	}
+	if st := d.status(); st.DeskRoot != "" {
+		t.Fatalf("still set: %+v", st)
+	}
+	if _, err := os.Stat(filepath.Join(root, desksync.MarkerName)); err != nil {
+		t.Fatalf("desk.unset removed the folder's marker: %v", err)
+	}
+	full := t.TempDir()
+	if err := os.WriteFile(filepath.Join(full, "a.md"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := sh.call(t, "desk.set", map[string]string{"root": full}); r.Error == nil || r.Error.Code != "not_empty" {
+		t.Fatalf("a full folder = %+v, want not_empty", r.Error)
+	}
+	// signing out stops the folder sync
+	if r := sh.call(t, "desk.set", map[string]string{"root": root}); r.Error != nil {
+		t.Fatalf("desk.set again (re-link): %v", r.Error)
+	}
+	if r := sh.call(t, "unpair", nil); r.Error != nil {
+		t.Fatalf("unpair: %v", r.Error)
+	}
+	if st := d.status(); st.DeskRoot != "" {
+		t.Fatalf("unpair kept the folder: %+v", st)
 	}
 }
