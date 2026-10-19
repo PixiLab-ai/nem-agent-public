@@ -63,6 +63,7 @@ type Remote interface {
 	DeskMkdir(ctx context.Context, companion, path string) (*api.DeskFile, error)
 	DeskMove(ctx context.Context, companion, from, to string, ifRev int) (*api.DeskFile, error)
 	DeskDelete(ctx context.Context, companion, path string) error
+	DeskQuota(ctx context.Context, companion string) (*api.DeskQuota, error)
 }
 
 // Fetcher downloads a blob's bytes from its URL into a file: their sha256 and size.
@@ -235,7 +236,12 @@ func (e *Engine) pass(ctx context.Context) error {
 		return err
 	}
 	if st := e.Status(); st.State != "waiting" {
-		e.report(Status{State: "up_to_date", LastSync: time.Now()})
+		if n := len(e.s.RoomWait); n > 0 {
+			// her desk is full: these stay in the folder only until it has room
+			e.report(Status{State: "full", Count: n, LastSync: time.Now()})
+		} else {
+			e.report(Status{State: "up_to_date", LastSync: time.Now()})
+		}
 	}
 	return nil
 }
@@ -692,6 +698,9 @@ func (e *Engine) scan() (dirs []string, files []localFile, err error) {
 }
 
 func (e *Engine) push(ctx context.Context) error {
+	if err := e.checkRoom(ctx); err != nil {
+		return err
+	}
 	dirs, files, err := e.scan()
 	if err != nil {
 		return errPaused
@@ -760,8 +769,8 @@ func (e *Engine) pushFile(ctx context.Context, lf localFile, now time.Time, gone
 		return nil // still being written: the next pass
 	}
 	sig := fmt.Sprintf("%d:%d", size, mtime.UnixNano())
-	if e.s.LocalOnly[lf.p] == sig {
-		return nil // refused before, unchanged since
+	if e.s.LocalOnly[lf.p] == sig || e.s.RoomWait[lf.p] == sig {
+		return nil // refused before, unchanged since (her desk full: until it has room)
 	}
 	if size > autoMax {
 		e.s.LocalOnly[lf.p] = sig
@@ -819,11 +828,31 @@ func (e *Engine) pushFile(ctx context.Context, lf localFile, now time.Time, gone
 		return e.pull(ctx) // she changed it too: the pull keeps both versions
 	case errors.As(err, &ae) && ae.Status == http.StatusForbidden && base != nil:
 		return e.restore(ctx, lf.p, base) // her file, or locked: her version comes back
+	case errors.As(err, &ae) && ae.Status == http.StatusRequestEntityTooLarge && ae.Code == "quota_exceeded":
+		e.s.RoomWait[lf.p] = sig // her desk is full: it goes up once there's room
+		return nil
 	case e.refused(err):
 		e.s.LocalOnly[lf.p] = sig
 		return nil
 	}
 	return err
+}
+
+// checkRoom — files waiting for room on her desk: once it has some again (she deleted files),
+// they're tried again on this pass.
+func (e *Engine) checkRoom(ctx context.Context) error {
+	if len(e.s.RoomWait) == 0 {
+		return nil
+	}
+	var q *api.DeskQuota
+	if err := e.call(ctx, func() (err error) { q, err = e.o.Remote.DeskQuota(ctx, e.o.Companion); return }); err != nil {
+		return err
+	}
+	if (q.MaxFiles > 0 && q.Files >= q.MaxFiles) || (q.MaxBytes > 0 && q.Bytes >= q.MaxBytes) {
+		return nil // still full
+	}
+	e.s.RoomWait = map[string]string{}
+	return nil
 }
 
 // moveUp — a file renamed or moved in the folder becomes a move on her desk (her meta, her
@@ -959,14 +988,16 @@ func (e *Engine) hasEntriesUnder(dir string) bool {
 }
 
 // restore brings her version of p back into the folder (a change to her system file, a delete
-// the desk refused).
+// the desk refused). What the folder had there goes to the local trash, not beside it: a copy in
+// the folder would go up to her desk as a new file, and a change to her own files is ignored,
+// never sent.
 func (e *Engine) restore(ctx context.Context, p string, en *Entry) error {
 	local, ok := e.localPath(p)
 	if !ok {
 		return nil
 	}
 	if exists(local) {
-		if err := e.conflictCopy(local); err != nil {
+		if err := e.toTrash(local, p); err != nil {
 			return err
 		}
 	}

@@ -27,6 +27,7 @@ type fakeDesk struct {
 	failDL map[string]bool
 	// cdnOverride: what the CDN hands back for a URL instead of the row's bytes (its cache)
 	cdnOverride map[string][]byte
+	maxFiles    int // > 0: a new file past this many live files is refused (quota_exceeded)
 }
 
 type fakeRow struct {
@@ -193,6 +194,9 @@ func (d *fakeDesk) DeskPut(_ context.Context, _ string, in api.DeskPutIn) (*api.
 	if r != nil && !r.f.Deleted && in.IfRev > 0 && r.f.Rev != in.IfRev {
 		return nil, false, &api.Error{Status: http.StatusConflict, Code: "rev_conflict"}
 	}
+	if d.maxFiles > 0 && (r == nil || r.f.Deleted) && d.liveFiles() >= d.maxFiles {
+		return nil, false, &api.Error{Status: http.StatusRequestEntityTooLarge, Code: "quota_exceeded"}
+	}
 	var nr *fakeRow
 	if in.Text != nil {
 		nr = d.put(in.Path, "text", *in.Text, nil, api.OriginSync)
@@ -201,6 +205,22 @@ func (d *fakeDesk) DeskPut(_ context.Context, _ string, in api.DeskPutIn) (*api.
 	}
 	f := nr.f
 	return &f, false, nil
+}
+
+func (d *fakeDesk) liveFiles() int {
+	n := 0
+	for _, r := range d.rows {
+		if !r.f.Deleted && r.f.Kind != "dir" {
+			n++
+		}
+	}
+	return n
+}
+
+func (d *fakeDesk) DeskQuota(_ context.Context, _ string) (*api.DeskQuota, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return &api.DeskQuota{Files: int64(d.liveFiles()), MaxFiles: int64(d.maxFiles)}, nil
 }
 
 func (d *fakeDesk) DeskMkdir(_ context.Context, _ string, p string) (*api.DeskFile, error) {

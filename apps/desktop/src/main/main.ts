@@ -214,6 +214,7 @@ function openPrefs() {
       },
       chooseFolder: chooseDeskFolder,
       openFolder: () => { if (status?.desk_root) void shell.openPath(status.desk_root) },
+      syncNow: () => { void nemd?.call('desk.now').catch(() => {}) },
       stopFolder: stopDeskFolder,
       checkUpdates: async () => (updates ? updates.check() : 'unavailable'),
       installUpdate: () => updates?.install(),

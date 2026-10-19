@@ -477,6 +477,11 @@ func (d *Daemon) Handle(ctx context.Context, c *ipc.Conn, method string, params 
 		d.emit("status", st)
 		return st, nil
 
+	case "desk.now":
+		// a pass now (the settings window's "sync now", a test)
+		d.pokeDesk()
+		return d.status(), nil
+
 	case "desk.answer":
 		// many files deleted from the folder at once: yes deletes them on her desk too, no puts
 		// them back in the folder

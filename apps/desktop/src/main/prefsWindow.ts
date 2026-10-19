@@ -33,6 +33,7 @@ export interface PrefsActions {
   setAutostart: (on: boolean) => string | null
   chooseFolder: (win: BrowserWindow) => Promise<{ ok: boolean, error?: string }>
   openFolder: () => void
+  syncNow: () => void
   stopFolder: (win: BrowserWindow) => Promise<{ ok: boolean, error?: string }>
   checkUpdates: () => Promise<UpdateCheck>
   installUpdate: () => void
@@ -103,6 +104,7 @@ export function openPrefsWindow(o: PrefsWindowOptions): BrowserWindow {
   }
   const sends: Record<string, () => void> = {
     'prefs:desk-open': () => o.act.openFolder(),
+    'prefs:desk-now': () => o.act.syncNow(),
     'prefs:install': () => o.act.installUpdate(),
     'prefs:source': () => o.act.openSource(),
     'prefs:signout': () => o.act.signOut(),

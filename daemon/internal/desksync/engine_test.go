@@ -204,6 +204,19 @@ func TestProtectedFilesAreDownloadOnly(t *testing.T) {
 	if r.called("put /personality.md") || r.called("put /avatar.png") {
 		t.Fatalf("a protected file was sent: %v", r.desk.calls)
 	}
+	// the local edit is kept in the trash, not beside her file (a copy there would go up as new)
+	if c := r.conflictCopies("/"); len(c) != 0 {
+		t.Fatalf("conflict copies of her files in the folder: %v", c)
+	}
+	if kept, _ := filepath.Glob(filepath.Join(r.trash, "*", "personality.md")); len(kept) != 1 {
+		t.Fatalf("the local edit isn't in the trash: %v", kept)
+	}
+	r.pass()
+	for _, c := range r.desk.calls {
+		if strings.HasPrefix(c, "put ") {
+			t.Fatalf("something went up after the restore: %v", r.desk.calls)
+		}
+	}
 	// deleting one here brings it back too
 	if err := os.Remove(r.local("/personality.md")); err != nil {
 		t.Fatal(err)
@@ -483,5 +496,35 @@ func TestPastCacheGetsTheOriginal(t *testing.T) {
 	r.pass()
 	if s, _ := r.read("/doc.png"); s != "the real bytes" {
 		t.Fatalf("got %q, want the original", s)
+	}
+}
+
+// Her desk full: new files stay in the folder only (the status says so), and go up once she
+// makes room.
+func TestFullDeskWaitsForRoom(t *testing.T) {
+	r := newRig(t)
+	r.desk.herText("/a.md", "a")
+	r.desk.maxFiles = 1
+	r.pass()
+	r.write("/new.md", "waits for room")
+	r.pass()
+	if r.desk.live("/new.md") != nil {
+		t.Fatal("went up past the quota")
+	}
+	if st := r.eng.Status(); st.State != "full" || st.Count != 1 {
+		t.Fatalf("status = %+v, want full 1", st)
+	}
+	n := len(r.desk.calls)
+	r.pass() // still full: not tried again
+	if len(r.desk.calls) != n {
+		t.Fatalf("tried again while full: %v", r.desk.calls[n:])
+	}
+	r.desk.herDelete("/a.md") // she makes room
+	r.pass()
+	if row := r.desk.live("/new.md"); row == nil || row.text != "waits for room" {
+		t.Fatalf("didn't go up once there was room: %+v", row)
+	}
+	if st := r.eng.Status(); st.State != "up_to_date" {
+		t.Fatalf("status after = %+v", st)
 	}
 }

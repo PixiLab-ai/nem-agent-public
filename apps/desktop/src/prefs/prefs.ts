@@ -32,9 +32,10 @@ function folderError(code: string): string {
 let state: PrefsState | null = null
 
 /** what the folder sync is doing, in words */
-function syncLine(sync: NonNullable<PrefsState['desk']>['sync']): string {
+function syncLine(sync: NonNullable<PrefsState['desk']>['sync'], name: string): string {
   if (!sync) return t('prefs.desk.state.starting')
   switch (sync.state) {
+    case 'full': return t('prefs.desk.state.full', { name, count: sync.count || 0 })
     case 'downloading': return t('prefs.desk.state.downloading', { done: sync.done || 0, total: sync.total || 0 })
     case 'up_to_date': return t('prefs.desk.state.up_to_date')
     case 'syncing': return t('prefs.desk.state.syncing')
@@ -52,10 +53,11 @@ function render(s: PrefsState) {
   $('desk-h').textContent = t('prefs.desk.h', { name })
   $('desk-p').textContent = t('prefs.desk.p', { name })
   $('desk-where').textContent = s.desk ? s.desk.root : ''
-  $('desk-state').textContent = s.desk ? syncLine(s.desk.sync) : (s.paired && s.companion ? t('prefs.desk.none') : t('prefs.desk.no_companion'))
+  $('desk-state').textContent = s.desk ? syncLine(s.desk.sync, name) : (s.paired && s.companion ? t('prefs.desk.none') : t('prefs.desk.no_companion'))
   btn('desk-choose').hidden = !!s.desk
   btn('desk-choose').disabled = !s.paired || !s.companion
   btn('desk-open').hidden = !s.desk
+  btn('desk-now').hidden = !s.desk
   btn('desk-stop').hidden = !s.desk
 
   $<HTMLInputElement>('pet').checked = s.pet
@@ -88,6 +90,7 @@ btn('desk-choose').addEventListener('click', async () => {
   }
 })
 btn('desk-open').addEventListener('click', () => window.prefs.openFolder())
+btn('desk-now').addEventListener('click', () => window.prefs.syncNow())
 btn('desk-stop').addEventListener('click', async () => {
   const r = await window.prefs.stopFolder()
   if (!r.ok && r.error && r.error !== 'canceled') say('desk-msg', folderError(r.error), 'bad')

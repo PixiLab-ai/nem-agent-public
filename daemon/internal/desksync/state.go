@@ -40,6 +40,9 @@ type State struct {
 	// LocalOnly: files the folder keeps but the desk refused (too big, a name the desk can't
 	// take): not tried again until they change (path → the size + mtime refused)
 	LocalOnly map[string]string `json:"local_only,omitempty"`
+	// RoomWait: files her full desk refused (413 quota_exceeded): they go up once it has room again
+	// (path → the size + mtime refused)
+	RoomWait map[string]string `json:"room_wait,omitempty"`
 
 	file string
 }
@@ -49,7 +52,7 @@ const stateVersion = 1
 // LoadState reads the state for this companion and folder; another folder or companion (or
 // none yet) starts fresh.
 func LoadState(file, companion, root string) (*State, error) {
-	fresh := &State{Version: stateVersion, Companion: companion, Root: root, Entries: map[string]*Entry{}, LocalOnly: map[string]string{}, file: file}
+	fresh := &State{Version: stateVersion, Companion: companion, Root: root, Entries: map[string]*Entry{}, LocalOnly: map[string]string{}, RoomWait: map[string]string{}, file: file}
 	raw, err := os.ReadFile(file)
 	if errors.Is(err, os.ErrNotExist) {
 		return fresh, nil
@@ -66,6 +69,9 @@ func LoadState(file, companion, root string) (*State, error) {
 	}
 	if s.LocalOnly == nil {
 		s.LocalOnly = map[string]string{}
+	}
+	if s.RoomWait == nil {
+		s.RoomWait = map[string]string{}
 	}
 	s.file = file
 	return &s, nil

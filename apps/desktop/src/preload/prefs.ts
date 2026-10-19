@@ -11,6 +11,7 @@ const api = {
   /** the folder picker, then nemd's check: `{ok}` or `{ok: false, error}` (a desksync code, or canceled) */
   chooseFolder(): Promise<{ ok: boolean, error?: string }> { return ipcRenderer.invoke('prefs:desk-choose') },
   openFolder() { ipcRenderer.send('prefs:desk-open') },
+  syncNow() { ipcRenderer.send('prefs:desk-now') },
   stopFolder(): Promise<{ ok: boolean, error?: string }> { return ipcRenderer.invoke('prefs:desk-stop') },
   checkUpdates(): Promise<UpdateCheck> { return ipcRenderer.invoke('prefs:updates') },
   installUpdate() { ipcRenderer.send('prefs:install') },
