@@ -48,10 +48,11 @@ export class Nemd extends EventEmitter {
   private stopping = false
   readonly socketPath: string
 
-  constructor(private binary: string, private base?: string, socketPath?: string) {
+  /** profile: nemd's separate state ("dev" for development runs: its own config and socket) */
+  constructor(private binary: string, private base?: string, private profile?: string) {
     super()
     if (!existsSync(binary)) throw new Error(`nemd not found at ${binary} (build it: cd daemon && go build -o bin/nemd ./cmd/nemd)`)
-    this.socketPath = socketPath || execFileSync(binary, ['--print-socket']).toString().trim()
+    this.socketPath = execFileSync(binary, ['--print-socket', ...this.profileArgs()]).toString().trim()
   }
 
   /** Connect to a running nemd, or start one and connect. */
@@ -71,7 +72,7 @@ export class Nemd extends EventEmitter {
     const logs = join(app.getPath('userData'), 'logs')
     mkdirSync(logs, { recursive: true })
     const out = createWriteStream(join(logs, 'nemd.log'), { flags: 'a' })
-    const args = ['--socket', this.socketPath]
+    const args = ['--socket', this.socketPath, ...this.profileArgs()]
     if (this.base) args.push('--base', this.base)
     const child = spawn(this.binary, args, { stdio: ['ignore', 'pipe', 'pipe'] })
     child.stdout?.pipe(out)
@@ -141,6 +142,8 @@ export class Nemd extends EventEmitter {
       s.write(JSON.stringify({ id, method, params }) + '\n')
     })
   }
+
+  private profileArgs(): string[] { return this.profile ? ['--profile', this.profile] : [] }
 
   /** this shell started the running nemd (it's ours, the version this app ships) */
   get ours(): boolean { return !!this.child }

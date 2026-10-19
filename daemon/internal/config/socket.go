@@ -17,15 +17,15 @@ import (
 //   - Windows: \\.\pipe\nem-agent-<user> (Node's net module speaks named pipes, not AF_UNIX).
 func SocketPath() string {
 	if runtime.GOOS == "windows" {
-		return `\\.\pipe\nem-agent-` + pipeUser()
+		return `\\.\pipe\` + suffixed("nem-agent-"+pipeUser(), "")
 	}
 	if runtime.GOOS == "linux" {
 		if d := os.Getenv("XDG_RUNTIME_DIR"); d != "" {
-			return filepath.Join(d, "nem-agent", "nemd.sock")
+			return filepath.Join(d, "nem-agent", suffixed("nemd", ".sock"))
 		}
-		return filepath.Join(os.TempDir(), fmt.Sprintf("nem-agent-%d", os.Getuid()), "nemd.sock")
+		return filepath.Join(os.TempDir(), fmt.Sprintf("nem-agent-%d", os.Getuid()), suffixed("nemd", ".sock"))
 	}
-	return filepath.Join(os.TempDir(), "nem-agent", "nemd.sock")
+	return filepath.Join(os.TempDir(), "nem-agent", suffixed("nemd", ".sock"))
 }
 
 // pipeUser is the account name, reduced to characters safe in a pipe name.

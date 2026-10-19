@@ -27,6 +27,30 @@ type Config struct {
 	KeyUUID   string `json:"key_uuid,omitempty"`  // the device key's id on the site (not the secret): what unpairing revokes
 }
 
+// profile separates a second set of state on the same machine: the development app ("dev") gets
+// its own config file and socket, so a dev run never changes what the installed app uses (it once
+// left the installed app on the dev site). "" = the installed app's.
+var profile string
+
+// SetProfile picks the profile: lowercase letters, digits and dashes, or "" for the default.
+func SetProfile(p string) error {
+	for _, c := range p {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-') {
+			return fmt.Errorf("profile %q: only a-z, 0-9 and -", p)
+		}
+	}
+	profile = p
+	return nil
+}
+
+// suffixed is "name.ext", or "name-<profile>.ext" under a profile.
+func suffixed(name, ext string) string {
+	if profile == "" {
+		return name + ext
+	}
+	return name + "-" + profile + ext
+}
+
 // Dir is nemd's config directory (created on Save).
 func Dir() (string, error) {
 	d, err := os.UserConfigDir()
@@ -41,7 +65,7 @@ func file() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(d, "nemd.json"), nil
+	return filepath.Join(d, suffixed("nemd", ".json")), nil
 }
 
 // Load reads the config, filling defaults. A missing file is not an error.

@@ -27,7 +27,11 @@ func main() {
 	ephemeral := flag.Bool("ephemeral", false, "keep the key in memory only and never write the config (tests, demos)")
 	printSocket := flag.Bool("print-socket", false, "print the default socket path and exit")
 	showVersion := flag.Bool("version", false, "print the version and exit")
+	prof := flag.String("profile", "", `a separate config and socket ("dev" for development runs), so they never touch the installed app's`)
 	flag.Parse()
+	if err := config.SetProfile(*prof); err != nil {
+		log.Fatalf("nemd: --profile: %v", err)
+	}
 
 	if *showVersion {
 		fmt.Println(version)

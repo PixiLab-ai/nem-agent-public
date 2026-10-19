@@ -56,6 +56,11 @@ function relaunchOnX11(): boolean {
 const RELAUNCHING = relaunchOnX11()
 
 // The demo gets its own profile, so it can run next to the real app.
+// Development runs (not packaged) keep their own state: their own Electron profile here and their
+// own nemd config and socket (profile "dev"), so a dev session never changes the installed app
+// (one left the installed app on the dev site, 2026-10-19).
+const DEV = !app.isPackaged
+if (DEV) app.setPath('userData', join(app.getPath('appData'), 'Nemini-dev'))
 if (DEMO) app.setPath('userData', join(app.getPath('userData'), 'demo'))
 if (process.platform === 'win32') app.setAppUserModelId('ai.nemini.desktop')
 
@@ -347,7 +352,7 @@ async function connectNemd() {
 
 function startNemd(): boolean {
   try {
-    nemd = new Nemd(nemdBinary(flag('nemd')), BASE)
+    nemd = new Nemd(nemdBinary(flag('nemd')), BASE, DEV ? 'dev' : undefined)
   }
   catch (e) {
     nemdProblem = (e as Error).message
