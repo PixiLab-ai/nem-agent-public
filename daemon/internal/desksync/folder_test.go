@@ -62,7 +62,7 @@ func TestCheck(t *testing.T) {
 		{"a file", file, "not_a_folder"},
 		{"a missing folder", filepath.Join(base, "nope"), "not_found"},
 		{"a relative path", "relative/dir", "not_absolute"},
-		{"the filesystem root", string(filepath.Separator), "too_broad"},
+		{"the filesystem root", filepath.VolumeName(base) + string(filepath.Separator), "too_broad"}, // "/", "C:\\"
 		{"the home folder itself", home, "too_broad"},
 	}
 	for _, c := range cases {

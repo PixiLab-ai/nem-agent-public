@@ -4,14 +4,14 @@ All notable changes to the Nemini desktop app. Versions follow [semver](https://
 
 ## 0.1.0-alpha.3 — 2026-10-19
 
+0.1.0-alpha.2 was built but never published (its Windows build stopped on a test), so this release
+carries everything it had.
+
 - **Quit Nemini, in the settings.** Closing the window keeps Nemini running in the background (the
   pet, notifications, the folder sync); the settings now say so, with a **Quit Nemini** button
   that stops all of it. The first time you close the window, a notification says it's still
   running and how to quit. Until now quitting was only in the tray menu, which some desktops don't
   show. Ctrl+Q in the window quits too.
-
-## 0.1.0-alpha.2 — 2026-10-19
-
 - **The app's own settings window** (tray → Settings…, Ctrl+, — Cmd+, on macOS — the gear in the
   website's sidebar, or its Settings → App, inside the app): their desktop's folder, Peek, the pet
   and start at login on this computer, signing this computer out, the version and a check for

@@ -39,6 +39,7 @@ func TestCategorize(t *testing.T) {
 func TestSteamGameName(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows: os.UserHomeDir reads this one
 	apps := filepath.Join(home, ".steam", "steam", "steamapps")
 	if err := os.MkdirAll(apps, 0o755); err != nil {
 		t.Fatal(err)

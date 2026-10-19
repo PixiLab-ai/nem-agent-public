@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -480,7 +481,7 @@ func TestRecompressedPictureIsKept(t *testing.T) {
 		t.Fatal("the re-compressed picture went up as a change")
 	}
 	info, _ := os.Stat(r.local("/photo.png"))
-	if info.Mode().Perm() != 0o644 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o644 { // Windows has no Unix modes (0666 = writable)
 		t.Fatalf("mode %v, want 0644", info.Mode().Perm())
 	}
 }
