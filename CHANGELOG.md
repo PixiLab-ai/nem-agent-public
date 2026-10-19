@@ -2,18 +2,22 @@
 
 All notable changes to the Nemini desktop app. Versions follow [semver](https://semver.org).
 
-## Unreleased
+## 0.1.0-alpha.2 — 2026-10-19
 
-- **The app's own settings window** (tray → Settings…, Ctrl+, — Cmd+, on macOS — or the website's
-  Settings → App inside the app): the pet and start at login on this computer, signing this
-  computer out, the version and a check for updates.
+- **The app's own settings window** (tray → Settings…, Ctrl+, — Cmd+, on macOS — the gear in the
+  website's sidebar, or its Settings → App, inside the app): their desktop's folder, Peek, the pet
+  and start at login on this computer, signing this computer out, the version and a check for
+  updates.
 - **Your companion's desktop as a folder on this computer:** choose or create an empty folder in
-  the settings, and the app downloads their desktop into it, then keeps both in step. What changes
-  on their side shows up in the folder within seconds while you're at the computer; what you add,
-  edit, rename or delete in the folder goes to their desktop. Their own files (personality,
-  avatar…) come down but stay theirs: a change made to one in the folder is undone. When both
-  sides changed the same file, both versions are kept. Many files deleted at once wait for your
-  yes; files they delete land in a local trash first.
+  the settings, and the app downloads their desktop into it, then keeps both in step. For now it's
+  mostly an easier way to give them files and to read theirs; later, they'll be able to do more
+  with it themselves. What changes on their side shows up in the folder within seconds while
+  you're at the computer; what you add, edit, rename or delete in the folder goes to their
+  desktop. Their own files (personality, avatar…) come down but stay theirs: a change made to one
+  in the folder is undone. When both sides changed the same file, both versions are kept. Many
+  files deleted at once wait for your yes; files they delete land in a local trash first; when
+  their desktop is full, the folder waits for room. **Sync now** in the settings doesn't wait for
+  the next round.
 - **Peek** (off by default, in the settings): the pet notices what *kind* of thing you're doing —
   coding, gaming, chatting, watching… and for how long — and teases you about it in its own voice:
   two hours of code, still gaming at 2 am, back in the chat for the tenth time this hour, a report

@@ -1,7 +1,7 @@
 {
   "name": "@nem-agent/desktop",
   "productName": "Nemini",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "private": true,
   "description": "Nemini on your desktop: the site in its own window, and your companion's pet on your screen.",
   "main": "dist/main/main.cjs",

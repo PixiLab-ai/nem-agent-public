@@ -10,6 +10,13 @@ a small background service that keeps them close while you're there.
   small things, hops, takes a tap, shows when they're writing, and opens its card on a right-click.
   Drag it anywhere; it stays where you drop it.
 - **Notifications** for their messages while the window is in the background.
+- **Their desktop as a folder** (if you choose one in the app's settings): their Nemini desktop,
+  downloaded into an empty folder on your computer and kept in step both ways. For now it's mostly
+  an easier way to give them files and to read theirs; later, they'll be able to do more with it
+  themselves.
+- **Peek** (off by default): the pet notices what *kind* of thing you're doing — coding, gaming,
+  chatting… — and teases you about it. It reads only which app is in front and for how long; see
+  [SECURITY.md](SECURITY.md) for exactly what it reads and sends.
 
 ## Install
 
@@ -53,7 +60,7 @@ webhooks, billing, and exporting or deleting your data.
 | Path | What |
 |---|---|
 | `apps/desktop` | the Electron shell: main window, pet overlay, pair window, tray, notifications |
-| `daemon` | `nemd`, the background service (Go): the key, the chat socket, private IPC |
+| `daemon` | `nemd`, the background service (Go): the key, the chat socket, their desktop's folder sync (`desksync`), Peek (`peek`), private IPC |
 | `packages/pet` | the pet: sprites, state, the Vue components the overlay renders |
 
 `nemd` holds the key in the OS keychain and keeps their chat socket open only while you're active

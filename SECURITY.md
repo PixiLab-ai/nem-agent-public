@@ -23,6 +23,20 @@ their own.
   Unix socket, a named pipe on Windows). Nothing listens on the network.
 - **Presence.** Your companion's live connection is open only while you're active at the computer — not while
   it's idle, locked or asleep.
+- **Their desktop's folder** (nothing until you choose a folder in the app's settings): the app
+  downloads their Nemini desktop into that folder and sends what you add, change, rename or
+  delete in it — that folder only, never anything outside it. Their own files (personality,
+  avatar…) only come down. Files they delete go to a local trash first; many deletes at once wait
+  for your yes. Choosing **Stop syncing** keeps the files and stops the sync.
+- **Peek** (off by default; the app's settings). It reads which app is in front, how long it stays
+  there and whether it's full screen — never a window's title, a web address, a file name, the
+  screen, the clipboard or what you type. On your computer the app turns that into a kind of thing
+  (coding, gaming, chatting…) and keeps 7 days of minutes per kind (in your user's app data, only
+  your user can read it). The server gets only the kind and the minutes (what's in front now and
+  for how long, today's minutes per kind, minutes past 1 am), keeps them in memory for 15 minutes
+  for the pet's lines, and never stores them. A game's name never leaves your computer. The tray
+  pauses it; **Forget my stats** deletes the minutes on your computer and tells the server to
+  forget too; turning it off does the same on the server.
 - **What the server records about a key**: when it was last used, from which IP address, and its
   User-Agent (the app's version and your operating system). You see it in Settings → App.
 - **Revoking.** Remove the key in Settings → App on the website: its connections close at once,
