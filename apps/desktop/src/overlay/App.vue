@@ -113,7 +113,8 @@ function reportHits() {
   hitsQueued = true
   requestAnimationFrame(() => {
     hitsQueued = false
-    const rects = [...document.querySelectorAll<HTMLElement>('[data-hit]')].map((el) => {
+    // [data-shape]: drawn, not clickable (the Peek eyes sit past the sprite's padded box; X11 would clip them)
+    const rects = [...document.querySelectorAll<HTMLElement>('[data-hit], [data-shape]')].map((el) => {
       const r = el.getBoundingClientRect()
       return { x: r.left - PAD, y: r.top - PAD, width: r.width + PAD * 2, height: r.height + PAD * 2 }
     })
@@ -169,10 +170,12 @@ onBeforeUnmount(() => {
   <div class="stage">
     <div class="column">
       <PetCard v-if="card && pet && !pet.muted" :pet="pet" :owner="owner" :t="t" @close="card = false" />
-      <div class="pet-wrap">
-        <PetSprite ref="sprite" :scale="4" :thinking="thinking" :mood="mood" :quiet="card" @tap="onTap" @grab="onGrab" @menu="onMenu" />
-        <span v-if="peeking && pet && !pet.muted" class="peek-eyes" aria-hidden="true">👀</span>
-      </div>
+      <!-- the eyes go in the sprite's own box: beside the pet, not at the top of the bubble above it (a tester, 2026-10-21) -->
+      <PetSprite ref="sprite" :scale="4" :thinking="thinking" :mood="mood" :quiet="card" @tap="onTap" @grab="onGrab" @menu="onMenu">
+        <template #side>
+          <span v-if="peeking && pet && !pet.muted" class="peek-eyes" data-shape aria-hidden="true">👀</span>
+        </template>
+      </PetSprite>
     </div>
   </div>
 </template>

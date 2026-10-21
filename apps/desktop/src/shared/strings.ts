@@ -16,6 +16,7 @@ export const STRINGS: Record<string, readonly [string, string, string, string, s
   "status.paired_with": ["Paired with {{name}}", "Associé à {{name}}", "Gekoppelt mit {{name}}", "已与 {{name}} 配对", "Vinculado con {{name}}", "{{name}} とペアリング済み"],
   "tray.open": ["Open Nemini", "Ouvrir Nemini", "Nemini öffnen", "打开 Nemini", "Abrir Nemini", "Nemini を開く"],
   "tray.show_pet": ["Show the pet", "Afficher l'animal", "Haustier anzeigen", "显示宠物", "Mostrar la mascota", "ペットを表示"],
+  "prefs.pet_top": ["Keep the pet above other windows (off: the windows you use cover it)", "Garder l'animal au-dessus des autres fenêtres (désactivé : les fenêtres que vous utilisez le recouvrent)", "Haustier über anderen Fenstern halten (aus: die Fenster, die Sie nutzen, verdecken es)", "让宠物始终在其他窗口之上（关闭：你使用的窗口会盖住它）", "Mantener la mascota encima de otras ventanas (desactivado: las ventanas que usas la tapan)", "ペットを他のウィンドウより手前に表示（オフ：使っているウィンドウの後ろに隠れます）"],
   "tray.autostart": ["Start at login", "Lancer à l'ouverture de session", "Bei der Anmeldung starten", "登录时启动", "Iniciar al abrir sesión", "ログイン時に起動"],
   "tray.companion": ["Companion", "Compagnon", "Begleiter", "伙伴", "Compañero", "コンパニオン"],
   "tray.pair": ["Pair with a key…", "Associer avec une clé…", "Mit einem Schlüssel koppeln…", "用密钥配对…", "Vincular con una clave…", "キーでペアリング…"],

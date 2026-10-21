@@ -82,6 +82,8 @@ onBeforeUnmount(() => { alive = false; if (blinkTimer) clearTimeout(blinkTimer);
       </button>
       <span v-if="thinking" class="np-badge np-dots" aria-hidden="true"><i /><i /><i /></span>
       <span v-else-if="moodIcon" class="np-badge" aria-hidden="true">{{ moodIcon }}</span>
+      <!-- marks that belong to the sprite itself (the overlay's Peek eyes): they stay on the pet, never on the bubble above it -->
+      <slot name="side" />
     </div>
   </div>
 </template>

@@ -237,6 +237,7 @@ function prefsState(): PrefsState {
     paired: !!status?.paired,
     companion: status?.companion ? companionName() : '',
     pet: settings.petVisible,
+    petOnTop: settings.petOnTop !== false,
     autostart: !DEMO && safeAutostartEnabled(),
     autostartAvailable: !DEMO,
     desk: status?.desk_root ? { root: status.desk_root, name: deskName, sync: status.desk || null } : null,
@@ -256,6 +257,7 @@ function openPrefs() {
     act: {
       state: prefsState,
       setPet: (on) => { settings.petVisible = on; saveSettings(settings); refresh() },
+      setPetOnTop,
       setAutostart: (on) => {
         try {
           setAutostart(on)
@@ -352,6 +354,38 @@ async function stopDeskFolder(win: BrowserWindow): Promise<{ ok: boolean, error?
   catch (e) {
     return { ok: false, error: e instanceof NemdError ? e.code : 'disconnected' }
   }
+}
+
+function makeOverlay(): Overlay {
+  return new Overlay({
+    preload: join(dist, 'preload/overlay.cjs'),
+    page: join(dist, 'overlay/index.html'),
+    saved: settings.position,
+    lang,
+    onTop: settings.petOnTop !== false,
+    onMoved: (display, at) => { settings.position = { display, at }; saveSettings(settings) },
+    onTap: async () => {
+      if (demo) return demo.tap()
+      return nemd?.call('pet.pet').catch(() => null) ?? null
+    },
+  })
+}
+
+/** The pet above every window, or not (the settings). Linux takes a new window for it (overlay.ts): it gets the pet and the Peek eyes again once loaded. */
+function setPetOnTop(on: boolean) {
+  settings.petOnTop = on
+  saveSettings(settings)
+  if (overlay && !overlay.restacks) {
+    overlay.destroy()
+    const fresh = overlay = makeOverlay()
+    void fresh.ready.then(() => {
+      if (overlay !== fresh) return
+      if (petInfo) fresh.send('overlay:info', { ...petInfo, owner: companionName() })
+      refresh()
+    })
+  }
+  else overlay?.setOnTop(on)
+  refresh()
 }
 
 function safeAutostartEnabled(): boolean {
@@ -633,17 +667,7 @@ async function start() {
   t = translator(lang)
   productionMenu()
   settings = loadSettings()
-  overlay = new Overlay({
-    preload: join(dist, 'preload/overlay.cjs'),
-    page: join(dist, 'overlay/index.html'),
-    saved: settings.position,
-    lang,
-    onMoved: (display, at) => { settings.position = { display, at }; saveSettings(settings) },
-    onTap: async () => {
-      if (demo) return demo.tap()
-      return nemd?.call('pet.pet').catch(() => null) ?? null
-    },
-  })
+  overlay = makeOverlay()
   tray = new AppTray(join(assets, 'tray.png'), { status: statusLine(), paired: false, petVisible: settings.petVisible, autostart: !DEMO && safeAutostartEnabled(), demo: DEMO, companions: [] }, {
     open: showMain,
     settings: openPrefs,

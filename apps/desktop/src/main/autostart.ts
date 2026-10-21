@@ -26,9 +26,17 @@ function quote(arg: string): string {
   return /^[\w@%+=:,./-]+$/.test(arg) ? arg : `"${arg.replace(/(["`$\\])/g, '\\$1')}"`
 }
 
+/** What the login item runs with: `--background` (and this app's folder in development). */
+function loginArgs(): string[] {
+  return app.isPackaged ? [BACKGROUND_FLAG] : [app.getAppPath(), BACKGROUND_FLAG]
+}
+
 export function autostartEnabled(): boolean {
   if (process.platform === 'linux') return existsSync(linuxEntry())
-  return app.getLoginItemSettings().openAtLogin
+  // Windows matches the Run entry against a command line: asked without the args it was set with,
+  // it answers "off" — the box ticked itself straight back off and "Start at login" could never be
+  // turned on (a tester, 2026-10-21). The args are ignored on macOS.
+  return app.getLoginItemSettings({ args: loginArgs() }).openAtLogin
 }
 
 export function setAutostart(on: boolean) {
@@ -52,6 +60,5 @@ export function setAutostart(on: boolean) {
     ].join('\n'))
     return
   }
-  const args = app.isPackaged ? [BACKGROUND_FLAG] : [app.getAppPath(), BACKGROUND_FLAG]
-  app.setLoginItemSettings({ openAtLogin: on, args })
+  app.setLoginItemSettings({ openAtLogin: on, args: loginArgs() })
 }

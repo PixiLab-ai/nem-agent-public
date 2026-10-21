@@ -14,6 +14,8 @@ export interface PrefsState {
   /** the companion the app shows ('' = none chosen) */
   companion: string
   pet: boolean
+  /** the pet above every window */
+  petOnTop: boolean
   autostart: boolean
   autostartAvailable: boolean
   /** her desktop's folder on this computer, whose desktop it holds, and what the sync is doing */
@@ -31,6 +33,7 @@ export type UpdateCheck = 'available' | 'none' | 'unavailable' | 'error'
 export interface PrefsActions {
   state: () => PrefsState
   setPet: (on: boolean) => void
+  setPetOnTop: (on: boolean) => void
   /** an error message when the OS refused */
   setAutostart: (on: boolean) => string | null
   chooseFolder: (win: BrowserWindow) => Promise<{ ok: boolean, error?: string }>
@@ -104,6 +107,7 @@ export function openPrefsWindow(o: PrefsWindowOptions): BrowserWindow {
   const handlers: Record<string, (e: Electron.IpcMainInvokeEvent, arg: unknown) => unknown> = {
     'prefs:state': () => o.act.state(),
     'prefs:pet': (_e, on) => { o.act.setPet(on === true); return o.act.state() },
+    'prefs:pet-top': (_e, on) => { o.act.setPetOnTop(on === true); return o.act.state() },
     'prefs:autostart': (_e, on) => ({ error: o.act.setAutostart(on === true), state: o.act.state() }),
     'prefs:desk-choose': () => o.act.chooseFolder(win),
     'prefs:desk-stop': () => o.act.stopFolder(win),

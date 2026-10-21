@@ -7,6 +7,7 @@ const api = {
   /** the state again whenever it changes (another window, the tray, nemd) */
   onState(cb: (s: PrefsState) => void) { ipcRenderer.on('prefs:changed', (_e, s: PrefsState) => cb(s)) },
   setPet(on: boolean): Promise<PrefsState> { return ipcRenderer.invoke('prefs:pet', on) },
+  setPetOnTop(on: boolean): Promise<PrefsState> { return ipcRenderer.invoke('prefs:pet-top', on) },
   setAutostart(on: boolean): Promise<{ error: string | null, state: PrefsState }> { return ipcRenderer.invoke('prefs:autostart', on) },
   /** the folder picker, then nemd's check: `{ok}` or `{ok: false, error}` (a desksync code, or canceled) */
   chooseFolder(): Promise<{ ok: boolean, error?: string }> { return ipcRenderer.invoke('prefs:desk-choose') },

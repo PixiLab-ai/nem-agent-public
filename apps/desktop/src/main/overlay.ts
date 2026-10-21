@@ -1,5 +1,5 @@
-// The pet's window: frameless, transparent, always on top, out of the taskbar, never focused,
-// and click-through everywhere except the pet itself.
+// The pet's window: frameless, transparent, on top of everything (unless the human said otherwise in
+// the settings), out of the taskbar, never focused, and click-through everywhere except the pet itself.
 //
 // Click-through per platform:
 //   - Linux X11: the renderer reports the pet's hit boxes and the window takes an X shape of
@@ -33,6 +33,8 @@ export interface OverlayOptions {
   onTap: () => Promise<unknown>
   /** the shell's language, for the pet's card */
   lang: string
+  /** above every window; false = a plain window, under the ones in use (settings: petOnTop) */
+  onTop: boolean
 }
 
 function clampInto(area: Rectangle, x: number, y: number): Point {
@@ -50,6 +52,10 @@ function defaultSpot(d: Display): Point {
 export class Overlay {
   readonly win: BrowserWindow
   readonly mode: ClickThrough
+  /** the page has loaded: what is sent before this is lost (a window made again sends after it) */
+  readonly ready: Promise<void>
+  /** on top / not on top switches on this window; false = Linux, where it takes a new window (see the constructor) */
+  readonly restacks = process.platform !== 'linux'
   private shown = false
   private wanted = false
   private drag: { timer: NodeJS.Timeout, start: Point, win: Point, moved: boolean, guard: NodeJS.Timeout } | null = null
@@ -57,6 +63,14 @@ export class Overlay {
   constructor(private o: OverlayOptions) {
     this.mode = clickThroughMode()
     const at = this.startSpot()
+    // Linux X11: Chromium makes a window that can't take focus override-redirect — the window manager never
+    // stacks it, so the pet is above everything whatever its level and "not on top" meant nothing (checked with
+    // xwininfo, 2026-10-21). Not on top, it is a desktop-type window there: managed, it sits on the desktop —
+    // above the wallpaper, under every app (xfwm4's stacking list) — and the window manager keeps it out of the
+    // taskbar and on every workspace (Electron dropped skipTaskbar on Linux, so a normal window would show in the
+    // taskbar). X11 can't turn one kind into the other: the main process makes a new window when the setting
+    // changes (restacks = false).
+    const managed = process.platform === 'linux' && !o.onTop
     this.win = new BrowserWindow({
       width: OVERLAY_W,
       height: OVERLAY_H,
@@ -72,10 +86,10 @@ export class Overlay {
       maximizable: false,
       fullscreenable: false,
       skipTaskbar: true,
-      alwaysOnTop: true,
-      focusable: false,
+      alwaysOnTop: o.onTop,
+      focusable: managed,
       title: 'Nemini pet',
-      ...(process.platform === 'darwin' ? { type: 'panel' } : {}),
+      ...(process.platform === 'darwin' ? { type: 'panel' } : managed ? { type: 'desktop' } : {}),
       webPreferences: {
         preload: o.preload,
         sandbox: true,
@@ -85,8 +99,9 @@ export class Overlay {
         spellcheck: false,
       },
     })
-    this.win.setAlwaysOnTop(true, 'screen-saver')
+    if (o.onTop) this.win.setAlwaysOnTop(true, 'screen-saver')
     if (process.platform === 'darwin') this.win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+    this.ready = new Promise(resolve => this.win.webContents.once('did-finish-load', () => resolve()))
     if (this.mode === 'forward') this.win.setIgnoreMouseEvents(true, { forward: true })
     else this.setShape([])
 
@@ -95,10 +110,12 @@ export class Overlay {
     this.win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
     this.wireIpc()
-    screen.on('display-removed', () => this.keepOnScreen())
-    screen.on('display-metrics-changed', () => this.keepOnScreen())
+    screen.on('display-removed', this.onDisplays)
+    screen.on('display-metrics-changed', this.onDisplays)
     void this.win.loadFile(o.page, { query: { mode: this.mode, lang: o.lang } })
   }
+
+  private onDisplays = () => this.keepOnScreen()
 
   private startSpot(): Point {
     const s = this.o.saved
@@ -203,8 +220,18 @@ export class Overlay {
 
   get visible() { return this.wanted }
 
+  /** Above every window, or a plain one. Electron has no "always below": off, the pet stays where it is in the
+   *  stack and the windows the human brings up cover it. */
+  setOnTop(on: boolean) {
+    if (this.win.isDestroyed() || !this.restacks) return
+    if (on) this.win.setAlwaysOnTop(true, 'screen-saver')
+    else this.win.setAlwaysOnTop(false)
+  }
+
   destroy() {
     this.endDrag()
+    screen.off('display-removed', this.onDisplays)
+    screen.off('display-metrics-changed', this.onDisplays)
     for (const ch of ['overlay:hits', 'overlay:hover']) ipcMain.removeAllListeners(ch)
     for (const ch of ['overlay:grab-start', 'overlay:grab-end', 'overlay:tap']) ipcMain.removeHandler(ch)
     if (!this.win.isDestroyed()) this.win.destroy()

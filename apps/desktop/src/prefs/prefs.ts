@@ -62,6 +62,8 @@ function render(s: PrefsState) {
   btn('desk-stop').hidden = !s.desk
 
   $<HTMLInputElement>('pet').checked = s.pet
+  $<HTMLInputElement>('pet-top').checked = s.petOnTop
+  $<HTMLInputElement>('pet-top').disabled = !s.pet
   const auto = $<HTMLInputElement>('autostart')
   auto.checked = s.autostart
   auto.disabled = !s.autostartAvailable
@@ -142,6 +144,9 @@ btn('desk-stop').addEventListener('click', async () => {
 })
 $<HTMLInputElement>('pet').addEventListener('change', async (e) => {
   render(await window.prefs.setPet((e.target as HTMLInputElement).checked))
+})
+$<HTMLInputElement>('pet-top').addEventListener('change', async (e) => {
+  render(await window.prefs.setPetOnTop((e.target as HTMLInputElement).checked))
 })
 $<HTMLInputElement>('autostart').addEventListener('change', async (e) => {
   const r = await window.prefs.setAutostart((e.target as HTMLInputElement).checked)

@@ -9,6 +9,8 @@ export interface Point { x: number, y: number }
 
 export interface Settings {
   petVisible: boolean
+  /** the pet above every window (the default), or a plain window the ones in use cover (a tester's ask, 2026-10-21) */
+  petOnTop?: boolean
   /** the "still running" notice was shown, the first time the window was closed */
   closeHinted?: boolean
   /** where the human last dropped the pet: the display (by id) and the window's top-left */
@@ -22,7 +24,7 @@ export function loadSettings(): Settings {
     const raw = JSON.parse(readFileSync(file(), 'utf8')) as Partial<Settings>
     const p = raw.position
     const position = p && Number.isFinite(p.display) && Number.isFinite(p.at?.x) && Number.isFinite(p.at?.y) ? p : undefined
-    return { petVisible: raw.petVisible !== false, position, closeHinted: raw.closeHinted === true }
+    return { petVisible: raw.petVisible !== false, petOnTop: raw.petOnTop !== false, position, closeHinted: raw.closeHinted === true }
   }
   catch {
     return { petVisible: true }
