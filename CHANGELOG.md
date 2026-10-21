@@ -2,13 +2,17 @@
 
 All notable changes to the Nemini desktop app. Versions follow [semver](https://semver.org).
 
-## Unreleased
+## 0.1.0-alpha.4 — 2026-10-22
 
 - **Keep the pet above other windows, or not:** a new setting in Settings → On this computer (on by
   default). Off, the windows you use cover the pet; on Linux it sits on your desktop, under your
   windows.
 - **Start at login can be turned on** on Windows (the box ticked itself straight back off).
 - **The Peek eyes stay beside the pet** when it talks, instead of riding on its speech bubble.
+- **Inside the window** — the website, which updates on its own, for every version of the app: the
+  Nemini logo takes you back to the chat, a day picked from the list opens at once, Light and Dark
+  switch instantly, and the files on their computer sort. The website's changelog has the rest
+  (v0.20alpha).
 
 ## 0.1.0-alpha.3 — 2026-10-19
 
